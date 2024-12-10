@@ -1,0 +1,12 @@
+{
+  "domain": "megad",
+  "name": "MegaD",
+  "documentation": "https://github.com/mihvs/megad",
+  "issue_tracker": "https://github.com/mihvs/megad/issues",
+  "codeowners": ["@mihvs"],
+  "config_flow": true,
+  "integration_type": "hub",
+  "dependencies": ["http", "zeroconf"],
+  "requirements": [],
+  "version": "2024.12.0"
+}

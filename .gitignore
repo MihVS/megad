@@ -1,0 +1,14 @@
+/.cloud
+/.storage
+/blueprints
+/.deps
+/.tts
+.HA_VERSION
+automations.yaml
+configuration.yaml
+home-assistant*
+scenes.yaml
+scripts.yaml
+secrets.yaml
+__pycache__
+/custom_components/megad/temp_data/
