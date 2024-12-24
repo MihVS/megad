@@ -225,7 +225,11 @@ class PortSensorMegaD(PortMegaD):
     """Конфигурация портов для сенсоров"""
 
     value: str = ''
-    type_sensor: TypeDSensorMegaD
+    type_sensor: TypeDSensorMegaD = Field(alias='d')
+
+    @validator('type_sensor', pre=True)
+    def convert_type_sensor(cls, value):
+        return TypeDSensorMegaD.get_value(value)
 
 
 class DeviceMegaD(BaseModel):

@@ -159,10 +159,10 @@ class TypeDSensorMegaD(EnumMegaD):
     @classmethod
     def description(cls) -> dict:
         return {
-            '0': 'dth11',
-            '1': 'dth22',
-            '2': 'one_wire',
-            '3': 'one_wire_bus',
+            '1': 'dth11',
+            '2': 'dth22',
+            '3': 'one_wire',
+            '5': 'one_wire_bus',
             '4': 'i_button',
-            '5': 'wiegand_26'
+            '6': 'wiegand_26'
         }
