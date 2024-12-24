@@ -1,10 +1,12 @@
-from pydantic import BaseModel, Field, validator
 from ipaddress import IPv4Address
 from urllib.parse import unquote, quote
 
+from pydantic import BaseModel, Field, validator
+
 from .enums import (
     ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD, TypePortMegaD,
-    ModeInMegaD, DeviceClassBinary, ModeOutMegaD, DeviceClassControl
+    ModeInMegaD, DeviceClassBinary, ModeOutMegaD, DeviceClassControl,
+    TypeDSensorMegaD
 )
 
 
@@ -13,7 +15,7 @@ class SystemConfigMegaD(BaseModel):
 
     ip_megad: IPv4Address = Field(alias='eip')
     network_mask: IPv4Address = Field(alias='emsk', default=None)
-    password: str = Field(alias='pwd')
+    password: str = Field(alias='pwd', max_length=3)
     gateway: IPv4Address = Field(alias='gw')
     ip_server: str = Field(alias='sip')
     server_type: ServerTypeMegaD = Field(alias='srvt')
@@ -38,52 +40,24 @@ class SystemConfigMegaD(BaseModel):
 
     @validator('server_type', pre=True)
     def convert_server_type(cls, value):
-        match value:
-            case '0':
-                return ServerTypeMegaD.HTTP
-            case '1':
-                return ServerTypeMegaD.MQTT
-            case _:
-                return ServerTypeMegaD.NONE
+        return ServerTypeMegaD.get_value(value)
 
     @validator('uart', pre=True)
     def convert_uart_type(cls, value):
-        match value:
-            case '0':
-                return ConfigUARTMegaD.DISABLED
-            case '1':
-                return ConfigUARTMegaD.GSM
-            case '2':
-                return ConfigUARTMegaD.RS485
-            case _:
-                return ConfigUARTMegaD.NONE
-
+        return ConfigUARTMegaD.get_value(value)
 
 class PortMegaD(BaseModel):
     """Базовый класс для всех портов"""
 
-    id: int = Field(alias='pn')
-    type_port: int = Field(alias='pty')
+    id: int = Field(alias='pn', ge=0, le=255)
+    type_port: TypePortMegaD = Field(alias='pty')
     title: str = Field(alias='emt', default='')
     inverse: bool = False
+    value: str = 'OFF'
 
-    @validator('type_port')
+    @validator('type_port', pre=True)
     def convert_type_port(cls, value):
-        match value:
-            case 255:
-                return TypePortMegaD.NC
-            case 0:
-                return TypePortMegaD.IN
-            case 1:
-                return TypePortMegaD.OUT
-            case 2:
-                return TypePortMegaD.DSEN
-            case 3:
-                return TypePortMegaD.I2C
-            case 4:
-                return TypePortMegaD.ADC
-            case _:
-                raise ValueError(f'Invalid type port for PortMegaD: {value}')
+        return TypePortMegaD.get_value(value)
 
     @validator('title', pre=True)
     def parse_title(cls, value, values):
@@ -134,36 +108,18 @@ class PortInMegaD(PortMegaD):
 
     @validator('execute_net_action', pre=True)
     def convert_execute_net_action(cls, value):
-        match value:
-            case '0':
-                return TypeNetActionMegaD.D
-            case '1':
-                return TypeNetActionMegaD.SF
-            case '2':
-                return TypeNetActionMegaD.A
-            case _:
-                raise ValueError(f'Invalid TypeNetActionMegaD: {value}')
+        return TypeNetActionMegaD.get_value(value)
 
     @validator('mode', pre=True)
     def convert_mode(cls, value):
-        match value:
-            case '0':
-                return ModeInMegaD.P
-            case '1':
-                return ModeInMegaD.P_R
-            case '2':
-                return ModeInMegaD.R
-            case '3':
-                return ModeInMegaD.C
-            case _:
-                raise ValueError(f'Invalid ModeInMegaD: {value}')
+        return ModeInMegaD.get_value(value)
 
     @validator('always_send_to_server', pre=True)
     def convert_always_send_to_server(cls, value):
         match value:
             case 'on':
                 return True
-            case '':
+            case _:
                 return False
 
     @validator('device_class', always=True)
@@ -191,12 +147,12 @@ class PortInMegaD(PortMegaD):
 class PortOutMegaD(PortMegaD):
     """Конфигурация портов выходов"""
 
-    default_on: bool = Field(alias='d', default=False)
+    default_value: bool = Field(alias='d', default=False)
     group: int | None = Field(alias='grp', default=None)
     mode: ModeOutMegaD = Field(alias='m')
 
-    @validator('default_on', pre=True)
-    def parse_default_on(cls, value):
+    @validator('default_value', pre=True)
+    def parse_default_value(cls, value):
         match value:
             case '1':
                 return True
@@ -213,19 +169,7 @@ class PortOutMegaD(PortMegaD):
 
     @validator('mode', pre=True)
     def convert_mode(cls, value):
-        match value:
-            case '0':
-                return ModeOutMegaD.SW
-            case '1':
-                return ModeOutMegaD.PWM
-            case '2':
-                return ModeOutMegaD.DS2413
-            case '3':
-                return ModeOutMegaD.SW_LINK
-            case '4':
-                return ModeOutMegaD.WS281X
-            case _:
-                raise ValueError(f'Invalid ModeInMegaD: {value}')
+        return ModeOutMegaD.get_value(value)
 
 
 class PortOutRelayMegaD(PortOutMegaD):
@@ -247,10 +191,15 @@ class PortOutRelayMegaD(PortOutMegaD):
                 return DeviceClassControl.SWITCH
 
 
-class PortOutPWMegaD(PortOutMegaD):
+class PortOutPWMMegaD(PortOutMegaD):
     """ШИМ выход"""
 
+    value: int = Field(default=0, ge=0, le=255)
     device_class: DeviceClassControl = DeviceClassControl.LIGHT
+    smooth: bool = Field(alias='misc', default=False)
+    smooth_long: int = Field(alias='m2', default=0, ge=0, le=255)
+    default_value: int = Field(alias='d', default=0, ge=0, le=255)
+    min_value: int = Field(alias='pwmm', default=0, ge=0, le=255)
 
     @validator('device_class', always=True)
     def set_device_class(cls, value, values):
@@ -263,9 +212,24 @@ class PortOutPWMegaD(PortOutMegaD):
             case _:
                 return DeviceClassControl.LIGHT
 
+    @validator('smooth', pre=True)
+    def parse_default_on(cls, value):
+        match value:
+            case 'on':
+                return True
+            case _:
+                return False
+
+
+class PortSensorMegaD(PortMegaD):
+    """Конфигурация портов для сенсоров"""
+
+    value: str = ''
+    type_sensor: TypeDSensorMegaD
+
 
 class DeviceMegaD(BaseModel):
     controller: SystemConfigMegaD
     binary_sensors: list[PortInMegaD] = []
     relay_outs: list[PortOutRelayMegaD] = []
-    pwm_outs: list[PortOutPWMegaD] = []
+    pwm_outs: list[PortOutPWMMegaD] = []
