@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, validator
 from .enums import (
     ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD, TypePortMegaD,
     ModeInMegaD, DeviceClassBinary, ModeOutMegaD, DeviceClassControl,
-    TypeDSensorMegaD
+    TypeDSensorMegaD, ModeSensorMegaD
 )
 
 
@@ -79,16 +79,13 @@ class PortMegaD(BaseModel):
                 return False
 
 
-class PortInMegaD(PortMegaD):
-    """Конфигурация портов цифровых входов"""
+class ActionPortMegaD(BaseModel):
+    """Конфигурация действия порта"""
 
     action: str = Field(alias='ecmd')
     execute_action: bool = Field(alias='af', default=False)
     net_action: str = Field(alias='eth')
     execute_net_action: TypeNetActionMegaD = Field(alias='naf')
-    mode: ModeInMegaD = Field(alias='m')
-    always_send_to_server: bool = Field(alias='misc', default=False)
-    device_class: DeviceClassBinary = DeviceClassBinary.NONE
 
     @validator('action')
     def decode_action(cls, value):
@@ -109,6 +106,14 @@ class PortInMegaD(PortMegaD):
     @validator('execute_net_action', pre=True)
     def convert_execute_net_action(cls, value):
         return TypeNetActionMegaD.get_value(value)
+
+
+class PortInMegaD(ActionPortMegaD, PortMegaD):
+    """Конфигурация портов цифровых входов"""
+
+    mode: ModeInMegaD = Field(alias='m')
+    always_send_to_server: bool = Field(alias='misc', default=False)
+    device_class: DeviceClassBinary = DeviceClassBinary.NONE
 
     @validator('mode', pre=True)
     def convert_mode(cls, value):
@@ -232,8 +237,33 @@ class PortSensorMegaD(PortMegaD):
         return TypeDSensorMegaD.get_value(value)
 
 
+class ModeControlSensor(ActionPortMegaD):
+    """
+    Режим работы сенсора по порогу выполнения команды.
+    Выбор режима доступен у 1 wire термометра и аналогово сенсора
+    """
+
+    mode: ModeSensorMegaD = Field(alias='m')
+    set_value: float = Field(alias='misc', default=0.0)
+    set_hst: float = Field(alias='hst', default=0.0)
+
+    @validator('mode', pre=True)
+    def convert_mode(cls, value):
+        return ModeSensorMegaD.get_value(value)
+
+
+class OneWireSensorMegaD(PortSensorMegaD, ModeControlSensor):
+    """Сенсор температурный 1 wire"""
+
+
+class DHTSensorMegaD(PortSensorMegaD):
+    """Сенсор температуры и влажности типа dht11, dht22"""
+
+
 class DeviceMegaD(BaseModel):
-    controller: SystemConfigMegaD
+    plc: SystemConfigMegaD
     binary_sensors: list[PortInMegaD] = []
     relay_outs: list[PortOutRelayMegaD] = []
     pwm_outs: list[PortOutPWMMegaD] = []
+    one_wire_sensors: list[OneWireSensorMegaD] = []
+    dht_sensors: list[DHTSensorMegaD] = []

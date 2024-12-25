@@ -1,5 +1,6 @@
 import logging
 
+from .models_megad import DeviceMegaD
 from homeassistant.core import HomeAssistant
 
 
@@ -12,8 +13,6 @@ class MegaD:
     def __init__(
             self,
             hass: HomeAssistant,
-            host: str,
-            name: str,
-            password: str,
+            data: DeviceMegaD
     ):
         pass

@@ -81,9 +81,9 @@ class TypePortMegaD(EnumMegaD):
             '255': 'not_configured',
             '0': 'binary_sensor',
             '1': 'out',
-            '2': 'digital_sensor',
-            '3': 'i2c',
-            '4': 'analog_sensor'
+            '3': 'digital_sensor',
+            '4': 'i2c',
+            '2': 'analog_sensor'
         }
 
 
@@ -165,4 +165,22 @@ class TypeDSensorMegaD(EnumMegaD):
             '5': 'one_wire_bus',
             '4': 'i_button',
             '6': 'wiegand_26'
+        }
+
+
+class ModeSensorMegaD(EnumMegaD):
+    """Типы настройки Mode сенсоров"""
+
+    NORM = 'norm'
+    MORE = 'more'
+    LESS = 'less'
+    LESS_AND_MORE = 'less_and_more'
+
+    @classmethod
+    def description(cls) -> dict:
+        return {
+            '0': 'norm',
+            '1': 'more',
+            '2': 'less',
+            '3': 'less_and_more',
         }
