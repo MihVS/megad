@@ -2,6 +2,7 @@ import logging
 
 from .models_megad import DeviceMegaD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ class MegaD:
     def __init__(
             self,
             hass: HomeAssistant,
-            data: DeviceMegaD
+            config: DeviceMegaD
     ):
-        pass
+        self.session = async_get_clientsession(hass)
+        self.config = config

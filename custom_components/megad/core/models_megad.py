@@ -14,6 +14,7 @@ class SystemConfigMegaD(BaseModel):
     """Главный конфиг контроллера"""
 
     ip_megad: IPv4Address = Field(alias='eip')
+    megad_id: str = Field(alias='mdid', )
     network_mask: IPv4Address = Field(alias='emsk', default=None)
     password: str = Field(alias='pwd', max_length=3)
     gateway: IPv4Address = Field(alias='gw')
@@ -21,7 +22,6 @@ class SystemConfigMegaD(BaseModel):
     server_type: ServerTypeMegaD = Field(alias='srvt')
     slug: str = Field(alias='sct')
     uart: ConfigUARTMegaD = Field(alias='gsm')
-
 
     @validator('password')
     def validate_password_length(cls, value):
