@@ -3,11 +3,11 @@ from urllib.parse import unquote, quote
 
 from pydantic import BaseModel, Field, validator
 
-from .enums import (
-    ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD, TypePortMegaD,
-    ModeInMegaD, DeviceClassBinary, ModeOutMegaD, DeviceClassControl,
-    TypeDSensorMegaD, ModeSensorMegaD
-)
+from .enums import (ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD,
+                    TypePortMegaD, ModeInMegaD, DeviceClassBinary,
+                    ModeOutMegaD, DeviceClassControl, TypeDSensorMegaD,
+                    ModeSensorMegaD, ModeWiegandMegaD, ModeI2CMegaD,
+                    CategoryI2CMegaD, DeviceI2CMegaD)
 
 
 class SystemConfigMegaD(BaseModel):
@@ -46,18 +46,35 @@ class SystemConfigMegaD(BaseModel):
     def convert_uart_type(cls, value):
         return ConfigUARTMegaD.get_value(value)
 
+
 class PortMegaD(BaseModel):
     """Базовый класс для всех портов"""
 
     id: int = Field(alias='pn', ge=0, le=255)
     type_port: TypePortMegaD = Field(alias='pty')
     title: str = Field(alias='emt', default='')
-    inverse: bool = False
     value: str = 'OFF'
 
     @validator('type_port', pre=True)
     def convert_type_port(cls, value):
         return TypePortMegaD.get_value(value)
+
+
+class DeviceClassMegaD(PortMegaD):
+    """Добавляет класс устройства для НА"""
+
+    device_class: str
+
+    @validator('title', pre=True)
+    def parse_title(cls, value, values):
+        values.update({'device_class': value})
+        return unquote(value)
+
+
+class InverseValueMegaD(DeviceClassMegaD):
+    """Добавляет функционал инверсии значения порта для НА"""
+
+    inverse: bool = False
 
     @validator('title', pre=True)
     def parse_title(cls, value, values):
@@ -82,10 +99,12 @@ class PortMegaD(BaseModel):
 class ActionPortMegaD(BaseModel):
     """Конфигурация действия порта"""
 
-    action: str = Field(alias='ecmd')
+    action: str = Field(alias='ecmd', default='')
     execute_action: bool = Field(alias='af', default=False)
-    net_action: str = Field(alias='eth')
-    execute_net_action: TypeNetActionMegaD = Field(alias='naf')
+    net_action: str = Field(alias='eth', default='')
+    execute_net_action: TypeNetActionMegaD = Field(
+        alias='naf', default=TypeNetActionMegaD.D
+    )
 
     @validator('action')
     def decode_action(cls, value):
@@ -108,7 +127,7 @@ class ActionPortMegaD(BaseModel):
         return TypeNetActionMegaD.get_value(value)
 
 
-class PortInMegaD(ActionPortMegaD, PortMegaD):
+class PortInMegaD(InverseValueMegaD, ActionPortMegaD):
     """Конфигурация портов цифровых входов"""
 
     mode: ModeInMegaD = Field(alias='m')
@@ -149,7 +168,7 @@ class PortInMegaD(ActionPortMegaD, PortMegaD):
                 return DeviceClassBinary.NONE
 
 
-class PortOutMegaD(PortMegaD):
+class PortOutMegaD(DeviceClassMegaD):
     """Конфигурация портов выходов"""
 
     default_value: bool = Field(alias='d', default=False)
@@ -177,7 +196,7 @@ class PortOutMegaD(PortMegaD):
         return ModeOutMegaD.get_value(value)
 
 
-class PortOutRelayMegaD(PortOutMegaD):
+class PortOutRelayMegaD(PortOutMegaD, InverseValueMegaD):
     """Релейный выход"""
 
     device_class: DeviceClassControl = DeviceClassControl.SWITCH
@@ -260,10 +279,59 @@ class DHTSensorMegaD(PortSensorMegaD):
     """Сенсор температуры и влажности типа dht11, dht22"""
 
 
+class IButtonMegaD(PortSensorMegaD, ActionPortMegaD):
+    """Считыватель 1-wire"""
+
+
+class WiegandMegaD(PortSensorMegaD):
+    """Считыватель Wiegand-26"""
+
+    mode: ModeWiegandMegaD = Field(alias='m')
+
+    @validator('mode', pre=True)
+    def convert_mode(cls, value):
+        return ModeWiegandMegaD.get_value(value)
+
+
+class WiegandD0MegaD(WiegandMegaD, ActionPortMegaD):
+    """Считыватель Wiegand-26 порт D0"""
+
+    d1: int = Field(alias='misc', default=0, ge=0, le=255)
+
+
+class I2CMegaD(PortMegaD):
+    """Конфигурация порта для устройств I2C"""
+
+    value: str = ''
+    mode: ModeI2CMegaD = Field(alias='m')
+
+    @validator('mode', pre=True)
+    def convert_mode(cls, value):
+        return ModeI2CMegaD.get_value(value)
+
+
+class I2CSDAMegaD(I2CMegaD):
+    """Конфигурация порта для устройств I2C"""
+
+    scl: int = Field(alias='misc', default=0, ge=0, le=255)
+    category: CategoryI2CMegaD | str = Field(alias='gr', default='')
+    device: DeviceI2CMegaD = Field(alias='d', default=DeviceI2CMegaD.NC)
+
+    @validator('category', pre=True)
+    def convert_category(cls, value):
+        return CategoryI2CMegaD.get_value(value)
+
+    @validator('device', pre=True)
+    def convert_device(cls, value):
+        return DeviceI2CMegaD.get_value(value)
+
+
+class AnalogPortMegaD(PortMegaD, ModeControlSensor):
+    """Конфигурация аналогового порта"""
+
+    value: str = ''
+
+
 class DeviceMegaD(BaseModel):
     plc: SystemConfigMegaD
-    binary_sensors: list[PortInMegaD] = []
-    relay_outs: list[PortOutRelayMegaD] = []
-    pwm_outs: list[PortOutPWMMegaD] = []
-    one_wire_sensors: list[OneWireSensorMegaD] = []
-    dht_sensors: list[DHTSensorMegaD] = []
+    ports: list[PortMegaD] = []
