@@ -108,7 +108,7 @@ class ModeInMegaD(EnumMegaD):
 class DeviceClassBinary(Enum):
     """Бинарные классы Home Assistant"""
 
-    NONE = None
+    NONE = ''
     DOOR = 'door'
     GARAGE_DOOR = 'garage_door'
     LOCK = 'lock'
