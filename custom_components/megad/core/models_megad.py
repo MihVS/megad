@@ -1,6 +1,6 @@
 from ipaddress import IPv4Address
 from typing import Union
-from urllib.parse import unquote, quote
+from urllib.parse import unquote
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
