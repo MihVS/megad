@@ -29,6 +29,8 @@ class InputBinary(BasePort):
         self.count: int = 0
 
     def update_state(self, raw_data: str):
+        """raw data: OFF/0"""
+
         state, count = raw_data.split('/')
         match state:
             case 'ON':
