@@ -83,13 +83,13 @@ class DeviceClassMegaD(PortMegaD):
         return data
 
 
-class InverseValueMixin:
+class InverseValueMixin(DeviceClassMegaD):
     """Добавляет функционал инверсии значения порта для НА"""
 
     inverse: bool = False
 
     @model_validator(mode='before')
-    def add_device_class(cls, data):
+    def add_inverse(cls, data):
         title = data.get('emt')
         decoded_title = unquote(title).encode('latin1').decode('windows-1251')
         if decoded_title.count('/') > 1:
@@ -99,6 +99,7 @@ class InverseValueMixin:
 
     @field_validator('inverse', mode='before')
     def set_inverse(cls, value):
+        print(value)
         match value:
             case '1':
                 return True
@@ -137,7 +138,7 @@ class ActionPortMixin:
         return TypeNetActionMegaD.get_value(value)
 
 
-class PortInMegaD(DeviceClassMegaD, InverseValueMixin, ActionPortMixin):
+class PortInMegaD(InverseValueMixin, ActionPortMixin):
     """Конфигурация портов цифровых входов"""
 
     mode: ModeInMegaD = Field(alias='m')
