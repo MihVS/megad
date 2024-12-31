@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 
-from .models_megad import PortMegaD, PortInMegaD
+from .models_megad import PortConfig, PortInConfig
 
 
 class BasePort(ABC):
     """Абстрактный класс для всех портов."""
     def __init__(self, conf):
-        self.conf: PortMegaD = conf
+        self.conf: PortConfig = conf
         self.state: str = ''
 
     @abstractmethod
@@ -22,26 +22,53 @@ class BasePort(ABC):
                 f"state={self.state}), name={self.conf.name})>")
 
 
-class InputBinary(BasePort):
-    def __init__(self, conf: PortInMegaD):
+class BinaryPortIn(BasePort):
+    """
+    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=2&mdid=55555 P
+    http://192.168.113.171:5001/megad?pt=7&mdid=55555&v=0
+    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=1&mdid=55555 R
+    http://192.168.113.171:5001/megad?pt=2&cnt=1&mdid=55555 pr
+    http://192.168.113.171:5001/megad?pt=2&m=1&cnt=2&mdid=55555 PR
+    http://192.168.113.171:5001/megad?pt=1&click=1&cnt=4&mdid=55555 C
+    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=6&mdid=55555
+
+    /megad?pt=1&cnt=1&mdid=55555 press
+
+    /megad?pt=2&cnt=1&mdid=55555 PR нажат
+    /megad?pt=2&m=1&cnt=2&mdid=55555 PR отжат
+
+    /megad?pt=3&m=1&cnt=1&mdid=55555 release
+    """
+    def __init__(self, conf: PortInConfig):
         super().__init__(conf)
-        self.state: bool = False
-        self.count: int = 0
+        self.conf: PortInConfig = conf
+        self._state: bool = False
+        self._count: int = 0
 
-    def update_state(self, raw_data: str):
-        """raw data: OFF/0"""
+    @property
+    def state(self):
+        return self._state
 
-        state, count = raw_data.split('/')
-        match state:
-            case 'ON':
-                state = True
-            case _:
-                state = False
+    @property
+    def count(self):
+        return self._count
+
+    def update_state(self,
+                     raw_data: str = '', state: bool = False, count: int = 0):
+        """raw data: OFF/7"""
+
+        if raw_data:
+            state, count = raw_data.split('/')
+            match state:
+                case 'ON':
+                    state = True
+                case _:
+                    state = False
 
         if self.conf.inverse:
-            self.state = not state
+            self._state = not state
         else:
-            self.state = state
+            self._state = state
 
-        self.count = int(count)
+        self._count = int(count)
 

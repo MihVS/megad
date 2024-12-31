@@ -40,7 +40,7 @@ class SystemConfigMegaD(BaseModel):
         return ConfigUARTMegaD.get_value(value)
 
 
-class PortMegaD(BaseModel):
+class PortConfig(BaseModel):
     """Базовый класс для всех портов"""
 
     id: int = Field(alias='pn', ge=0, le=255)
@@ -68,7 +68,7 @@ class PortMegaD(BaseModel):
         return data
 
 
-class DeviceClassMegaD(PortMegaD):
+class DeviceClassConfig(PortConfig):
     """Добавляет поле класса устройства для НА"""
 
     device_class: str = ''
@@ -83,7 +83,7 @@ class DeviceClassMegaD(PortMegaD):
         return data
 
 
-class InverseValueMixin(DeviceClassMegaD):
+class InverseValueMixin(DeviceClassConfig):
     """Добавляет функционал инверсии значения порта для НА"""
 
     inverse: bool = False
@@ -138,7 +138,7 @@ class ActionPortMixin:
         return TypeNetActionMegaD.get_value(value)
 
 
-class PortInMegaD(InverseValueMixin, ActionPortMixin):
+class PortInConfig(InverseValueMixin, ActionPortMixin):
     """Конфигурация портов цифровых входов"""
 
     mode: ModeInMegaD = Field(alias='m')
@@ -178,7 +178,7 @@ class PortInMegaD(InverseValueMixin, ActionPortMixin):
                 return DeviceClassBinary.NONE
 
 
-class PortOutMegaD(DeviceClassMegaD):
+class PortOutConfig(DeviceClassConfig):
     """Конфигурация портов выходов"""
 
     default_value: bool = Field(alias='d', default=False)
@@ -206,7 +206,7 @@ class PortOutMegaD(DeviceClassMegaD):
         return ModeOutMegaD.get_value(value)
 
 
-class PortOutRelayMegaD(PortOutMegaD, InverseValueMixin):
+class PortOutRelayConfig(PortOutConfig, InverseValueMixin):
     """Релейный выход"""
 
     device_class: DeviceClassControl = DeviceClassControl.SWITCH
@@ -224,7 +224,7 @@ class PortOutRelayMegaD(PortOutMegaD, InverseValueMixin):
                 return DeviceClassControl.SWITCH
 
 
-class PortOutPWMMegaD(PortOutMegaD):
+class PortOutPWMConfig(PortOutConfig):
     """ШИМ выход"""
 
     device_class: DeviceClassControl = DeviceClassControl.LIGHT
@@ -252,7 +252,7 @@ class PortOutPWMMegaD(PortOutMegaD):
                 return False
 
 
-class PortSensorMegaD(PortMegaD):
+class PortSensorConfig(PortConfig):
     """Конфигурация портов для сенсоров"""
 
     type_sensor: TypeDSensorMegaD = Field(alias='d')
@@ -277,19 +277,19 @@ class ModeControlSensorMixin(ActionPortMixin):
         return ModeSensorMegaD.get_value(value)
 
 
-class OneWireSensorMegaD(PortSensorMegaD, ModeControlSensorMixin):
+class OneWireSensorConfig(PortSensorConfig, ModeControlSensorMixin):
     """Сенсор температурный 1 wire"""
 
 
-class DHTSensorMegaD(PortSensorMegaD):
+class DHTSensorConfig(PortSensorConfig):
     """Сенсор температуры и влажности типа dht11, dht22"""
 
 
-class IButtonMegaD(PortSensorMegaD, ActionPortMixin):
+class IButtonConfig(PortSensorConfig, ActionPortMixin):
     """Считыватель 1-wire"""
 
 
-class WiegandMegaD(PortSensorMegaD):
+class WiegandConfig(PortSensorConfig):
     """Считыватель Wiegand-26"""
 
     mode: ModeWiegandMegaD = Field(alias='m')
@@ -299,13 +299,13 @@ class WiegandMegaD(PortSensorMegaD):
         return ModeWiegandMegaD.get_value(value)
 
 
-class WiegandD0MegaD(WiegandMegaD, ActionPortMixin):
+class WiegandD0Config(WiegandConfig, ActionPortMixin):
     """Считыватель Wiegand-26 порт D0"""
 
     d1: int = Field(alias='misc', default=0, ge=0, le=255)
 
 
-class I2CMegaD(PortMegaD):
+class I2CConfig(PortConfig):
     """Конфигурация порта для устройств I2C"""
 
     mode: ModeI2CMegaD = Field(alias='m')
@@ -315,7 +315,7 @@ class I2CMegaD(PortMegaD):
         return ModeI2CMegaD.get_value(value)
 
 
-class I2CSDAMegaD(I2CMegaD):
+class I2CSDAConfig(I2CConfig):
     """Конфигурация порта для устройств I2C"""
 
     scl: int = Field(alias='misc', default=0, ge=0, le=255)
@@ -331,15 +331,15 @@ class I2CSDAMegaD(I2CMegaD):
         return DeviceI2CMegaD.get_value(value)
 
 
-class AnalogPortMegaD(PortMegaD, ModeControlSensorMixin):
+class AnalogPortConfig(PortConfig, ModeControlSensorMixin):
     """Конфигурация аналогового порта"""
 
 
 class DeviceMegaD(BaseModel):
     plc: SystemConfigMegaD
     ports: list[Union[
-        PortMegaD, PortInMegaD, PortOutMegaD, PortOutRelayMegaD,
-        PortOutPWMMegaD, PortSensorMegaD, OneWireSensorMegaD, DHTSensorMegaD,
-        IButtonMegaD, WiegandMegaD, WiegandD0MegaD, I2CMegaD, I2CSDAMegaD,
-        AnalogPortMegaD
+        PortConfig, PortInConfig, PortOutConfig, PortOutRelayConfig,
+        PortOutPWMConfig, PortSensorConfig, OneWireSensorConfig, DHTSensorConfig,
+        IButtonConfig, WiegandConfig, WiegandD0Config, I2CConfig, I2CSDAConfig,
+        AnalogPortConfig
     ]]
