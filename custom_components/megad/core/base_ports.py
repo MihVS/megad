@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
+import re
 
-from .models_megad import PortConfig, PortInConfig
+from .exceptions import UpdateStateError
+from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
+                           )
 
 
 class BasePort(ABC):
@@ -25,7 +28,6 @@ class BasePort(ABC):
 class BinaryPortIn(BasePort):
     """
     http://192.168.113.171:5001/megad?pt=1&m=1&cnt=2&mdid=55555 P
-    http://192.168.113.171:5001/megad?pt=7&mdid=55555&v=0
     http://192.168.113.171:5001/megad?pt=1&m=1&cnt=1&mdid=55555 R
     http://192.168.113.171:5001/megad?pt=2&cnt=1&mdid=55555 pr
     http://192.168.113.171:5001/megad?pt=2&m=1&cnt=2&mdid=55555 PR
@@ -39,6 +41,7 @@ class BinaryPortIn(BasePort):
 
     /megad?pt=3&m=1&cnt=1&mdid=55555 release
     """
+
     def __init__(self, conf: PortInConfig):
         super().__init__(conf)
         self.conf: PortInConfig = conf
@@ -53,22 +56,46 @@ class BinaryPortIn(BasePort):
     def count(self):
         return self._count
 
-    def update_state(self,
-                     raw_data: str = '', state: bool = False, count: int = 0):
+    def update_state(self, raw_data: str):
         """raw data: OFF/7"""
 
-        if raw_data:
-            state, count = raw_data.split('/')
-            match state:
-                case 'ON':
-                    state = True
-                case _:
-                    state = False
+        pattern = r"^[a-zA-Z0-9]+/\d+$"
+        if not re.match(pattern, raw_data):
+            raise UpdateStateError(f'invalid state port_in: {raw_data}')
 
-        if self.conf.inverse:
-            self._state = not state
-        else:
-            self._state = state
+        state, count = raw_data.split('/')
+
+        match state:
+            case 'ON' | '1':
+                state = True
+            case _:
+                state = False
+
+        self._state = not state if self.conf.inverse else state
 
         self._count = int(count)
+
+
+class ReleyPortOut(BasePort):
+    """
+    http://192.168.113.171:5001/megad?pt=7&mdid=55555&v=0
+    """
+
+    def __init__(self, conf: PortOutRelayConfig):
+        super().__init__(conf)
+        self.conf: PortOutRelayConfig = conf
+        self._state: bool = False
+
+    def update_state(self, raw_data: str | int | bool):
+        """raw data: OFF"""
+
+        state: bool
+
+        match raw_data:
+            case 'ON' | '1' | 1:
+                state = True
+            case _:
+                state = False
+
+        self._state = not state if self.conf.inverse else state
 
