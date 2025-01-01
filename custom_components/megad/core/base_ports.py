@@ -3,6 +3,7 @@ import re
 
 from .exceptions import UpdateStateError
 from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
+                           PortOutPWMConfig,
                            )
 
 
@@ -10,7 +11,11 @@ class BasePort(ABC):
     """Абстрактный класс для всех портов."""
     def __init__(self, conf):
         self.conf: PortConfig = conf
-        self.state: str = ''
+        self._state: str = ''
+
+    @property
+    def state(self):
+        return self._state
 
     @abstractmethod
     def update_state(self, raw_data):
@@ -22,7 +27,7 @@ class BasePort(ABC):
 
     def __repr__(self):
         return (f"<Port(id={self.conf.id}, type={self.conf.type_port}, "
-                f"state={self.state}), name={self.conf.name})>")
+                f"state={self._state}), name={self.conf.name})>")
 
 
 class BinaryPortIn(BasePort):
@@ -47,10 +52,6 @@ class BinaryPortIn(BasePort):
         self.conf: PortInConfig = conf
         self._state: bool = False
         self._count: int = 0
-
-    @property
-    def state(self):
-        return self._state
 
     @property
     def count(self):
@@ -98,4 +99,20 @@ class ReleyPortOut(BasePort):
                 state = False
 
         self._state = not state if self.conf.inverse else state
+
+
+class PWMPortOut(BasePort):
+    """
+    http://192.168.113.171:5001/megad?pt=12&mdid=55555&v=250
+    """
+
+    def __init__(self, conf: PortOutPWMConfig):
+        super().__init__(conf)
+        self.conf: PortOutPWMConfig = conf
+        self._state: int = 0
+
+    def update_state(self, raw_data: str | int):
+        """raw data: 100"""
+
+        self._state = int(raw_data)
 
