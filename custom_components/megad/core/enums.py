@@ -69,7 +69,7 @@ class TypePortMegaD(EnumMegaD):
     """Типы портов контроллера"""
 
     NC = 'not_configured'
-    IN = 'binary_sensor'
+    IN = 'in'
     OUT = 'out'
     DSEN = 'digital_sensor'
     I2C = 'i2c'
@@ -79,7 +79,7 @@ class TypePortMegaD(EnumMegaD):
     def description(cls) -> dict:
         return {
             '255': 'not_configured',
-            '0': 'binary_sensor',
+            '0': 'in',
             '1': 'out',
             '3': 'digital_sensor',
             '4': 'i2c',
