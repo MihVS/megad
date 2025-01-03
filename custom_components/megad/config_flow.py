@@ -6,7 +6,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import DOMAIN
-from .core.config_parser import async_fetch_page
+from .core.config_parser import async_fetch_page, async_read_configuration
 from .core.exceptions import InvalidIpAddress
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,16 +83,22 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(user_input)
-            page = await async_fetch_page(
-                self.data['url'], async_get_clientsession(self.hass))
-            _LOGGER.debug(page)
+            _LOGGER.debug(user_input.get('name_file'))
+            # page = await async_fetch_page(
+            #     self.data['url'], async_get_clientsession(self.hass))
+            await async_read_configuration(
+                self.data['url'],
+                user_input.get('name_file'),
+                async_get_clientsession(self.hass)
+            )
+            # _LOGGER.debug(page)
 
         return self.async_show_form(
             step_id='read_config',
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        schema="name",
+                        schema="name_file",
                         default=f'config_{datetime.now().strftime("%Y_%m_%d")}'
                     ): str
                 }
