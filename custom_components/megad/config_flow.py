@@ -7,9 +7,11 @@ from datetime import datetime
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.translation import async_get_translations
 from .const import DOMAIN, PATH_CONFIG_MEGAD
 from .core.config_parser import async_read_configuration, write_config_megad
-from .core.exceptions import InvalidIpAddress, WriteConfigError
+from .core.exceptions import InvalidIpAddress, WriteConfigError, \
+    InvalidPassword
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +28,13 @@ def validate_ip_address(ip: str) -> None:
         raise InvalidIpAddress
 
 
+def validate_long_password(password: str) -> None:
+    """Валидация длины пароля"""
+
+    if len(password) > 3:
+        raise InvalidPassword
+
+
 class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     data: dict = None
@@ -36,6 +45,7 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug(user_input)
             try:
                 validate_ip_address(user_input['ip'])
+                validate_long_password(user_input['password'])
                 if not errors:
                     self.data = {
                         'url': f'http://{user_input["ip"]}/'
@@ -44,16 +54,21 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 return await self.async_step_get_config()
             except InvalidIpAddress:
-                _LOGGER.error("Invalid IP address")
+                _LOGGER.error('Неверный формат ip адреса')
                 errors['base'] = 'invalid_ip'
+            except InvalidPassword:
+                _LOGGER.error(f'Пароль длиннее 3х символов')
+                errors['base'] = 'invalid_password'
+            except Exception as e:
+                _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id='user',
             data_schema=vol.Schema(
                 {
                     vol.Required(schema="ip", default='192.168.113.44'): str,
-                    vol.Required(schema="password", default='sec'):
-                        vol.All(str, vol.Length(max=3)),
+                    vol.Required(schema="password", default='sec'): str
                 }
             ),
             errors=errors
@@ -76,9 +91,9 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required('config_menu'): vol.In({
-                        'read_config': 'Read config',
-                        'select_config': 'Select config',
-                        'write_config': 'Write config',
+                        'read_config': 'Прочитать конфигурацию с MegaD',
+                        'select_config': 'Выбрать готовую конфигурацию',
+                        'write_config': 'Записать конфигурацию на MegaD',
                     })
                 }
             ),

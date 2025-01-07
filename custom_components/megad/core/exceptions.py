@@ -11,6 +11,11 @@ class InvalidIpAddress(Exception):
     pass
 
 
+class InvalidPassword(Exception):
+    """Пароль слишком длинный"""
+    pass
+
+
 class WriteConfigError(Exception):
     """Ошибка записи конфигурации в контроллер"""
     pass

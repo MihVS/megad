@@ -1,0 +1,48 @@
+{
+  "title": "MegaD",
+  "config": {
+    "error": {
+      "invalid_ip": "Invalid IP address format",
+      "invalid_password": "Password must be longer than 3 characters",
+      "unknown": "Unknown error"
+    },
+    "step": {
+      "user": {
+        "title": "MegaD Controller Configuration",
+        "description": "Enter the connection parameters",
+        "data": {
+          "ip": "Controller IP address",
+          "password": "Controller password"
+        }
+      },
+      "get_config": {
+        "title": "Configuration",
+        "description": "Select the desired action",
+        "data": {
+          "config_menu": "Actions"
+        }
+      },
+      "read_config": {
+        "title": "Read Configuration from MegaD",
+        "description": "Enter the file name",
+        "data": {
+          "name_file": "File name"
+        }
+      },
+      "select_config": {
+        "title": "Configuration File",
+        "description": "Select a configuration file to add MegaD to Home Assistant",
+        "data": {
+          "config_list": "Saved configuration files"
+        }
+      },
+      "write_config": {
+        "title": "Write Configuration to MegaD",
+        "description": "Select a configuration file to write to the controller",
+        "data": {
+          "config_list": "Saved configuration files"
+        }
+      }
+    }
+  }
+}
