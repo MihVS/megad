@@ -1,13 +1,15 @@
+import asyncio
 import logging
+import os
 import re
 from datetime import datetime
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .const import DOMAIN
-from .core.config_parser import async_fetch_page, async_read_configuration
-from .core.exceptions import InvalidIpAddress
+from .const import DOMAIN, PATH_CONFIG_MEGAD
+from .core.config_parser import async_read_configuration, write_config_megad
+from .core.exceptions import InvalidIpAddress, WriteConfigError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +39,8 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if not errors:
                     self.data = {
                         'url': f'http://{user_input["ip"]}/'
-                               f'{user_input["password"]}/'
+                               f'{user_input["password"]}/',
+                        'ip': user_input['ip']
                     }
                 return await self.async_step_get_config()
             except InvalidIpAddress:
@@ -63,6 +66,10 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug(user_input)
             if user_input.get('config_menu') == 'read_config':
                 return await self.async_step_read_config()
+            if user_input.get('config_menu') == 'select_config':
+                return await self.async_step_select_config()
+            if user_input.get('config_menu') == 'write_config':
+                return await self.async_step_write_config()
 
         return self.async_show_form(
             step_id='get_config',
@@ -83,15 +90,13 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(user_input)
-            _LOGGER.debug(user_input.get('name_file'))
-            # page = await async_fetch_page(
-            #     self.data['url'], async_get_clientsession(self.hass))
+
             await async_read_configuration(
                 self.data['url'],
                 user_input.get('name_file'),
                 async_get_clientsession(self.hass)
             )
-            # _LOGGER.debug(page)
+            return await self.async_step_select_config()
 
         return self.async_show_form(
             step_id='read_config',
@@ -99,8 +104,61 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         schema="name_file",
-                        default=f'config_{datetime.now().strftime("%Y_%m_%d")}'
+                        default=f'ip{self.data["ip"].split(".")[-1]}_'
+                                f'{datetime.now().strftime("%Y%m%d")}'
                     ): str
+                }
+            ),
+            errors=errors
+        )
+
+    async def async_step_select_config(self, user_input=None):
+        """Выбор конфигурации контроллера для создания сущности в НА"""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            _LOGGER.debug(user_input)
+
+        config_list = await asyncio.to_thread(os.listdir, PATH_CONFIG_MEGAD)
+        config_list = [file for file in config_list if file != ".gitkeep"]
+
+        return self.async_show_form(
+            step_id='select_config',
+            data_schema=vol.Schema(
+                {
+                    vol.Required('config_list'): vol.In(config_list)
+                }
+            ),
+            errors=errors
+        )
+
+    async def async_step_write_config(self, user_input=None):
+        """Выбор конфигурации контроллера для создания сущности в НА"""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                _LOGGER.debug(user_input)
+                name_file = user_input.get('config_list')
+                file_path = os.path.join(PATH_CONFIG_MEGAD, name_file)
+                _LOGGER.debug(f'file_path: {file_path}')
+                _LOGGER.debug(f'name_file: {name_file}')
+                await write_config_megad(
+                    str(file_path),
+                    self.data['url'],
+                    async_get_clientsession(self.hass)
+                )
+            except WriteConfigError as e:
+                _LOGGER.error(f'Ошибка записи конфигурации в контроллер: {e}')
+            except Exception as e:
+                _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+
+        config_list = await asyncio.to_thread(os.listdir, PATH_CONFIG_MEGAD)
+        config_list = [file for file in config_list if file != ".gitkeep"]
+
+        return self.async_show_form(
+            step_id='write_config',
+            data_schema=vol.Schema(
+                {
+                    vol.Required('config_list'): vol.In(config_list)
                 }
             ),
             errors=errors

@@ -9,3 +9,8 @@ class UpdateStateError(Exception):
 class InvalidIpAddress(Exception):
     """Ошибка валидации ip адреса"""
     pass
+
+
+class WriteConfigError(Exception):
+    """Ошибка записи конфигурации в контроллер"""
+    pass
