@@ -1,17 +1,21 @@
 import asyncio
+import aiohttp
 import logging
 import os
 import re
 from datetime import datetime
 
+from http import HTTPStatus
+
 import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.translation import async_get_translations
 from .const import DOMAIN, PATH_CONFIG_MEGAD
 from .core.config_parser import async_read_configuration, write_config_megad
-from .core.exceptions import InvalidIpAddress, WriteConfigError, \
-    InvalidPassword
+from .core.exceptions import (InvalidIpAddress, WriteConfigError,
+                              InvalidPassword, InvalidAuthorized)
+from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +39,15 @@ def validate_long_password(password: str) -> None:
         raise InvalidPassword
 
 
+async def validate_password(url: str, session: aiohttp.ClientSession) -> None:
+    """Валидация пароля"""
+
+    async with session.get(url) as response:
+        code = response.status
+        if code == HTTPStatus.UNAUTHORIZED:
+            raise InvalidAuthorized
+
+
 class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     data: dict = None
@@ -43,22 +56,32 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(user_input)
+            ip = user_input['ip']
+            password = user_input['password']
+            url = f'http://{user_input["ip"]}/{user_input["password"]}/'
             try:
-                validate_ip_address(user_input['ip'])
-                validate_long_password(user_input['password'])
+                validate_ip_address(ip)
+                validate_long_password(password)
+                await validate_password(
+                    url, async_get_clientsession(self.hass)
+                )
                 if not errors:
-                    self.data = {
-                        'url': f'http://{user_input["ip"]}/'
-                               f'{user_input["password"]}/',
-                        'ip': user_input['ip']
-                    }
+                    self.data = {'url': url, 'ip': user_input['ip']}
                 return await self.async_step_get_config()
             except InvalidIpAddress:
-                _LOGGER.error('Неверный формат ip адреса')
+                _LOGGER.error(f'Неверный формат ip адреса: {ip}')
                 errors['base'] = 'invalid_ip'
             except InvalidPassword:
-                _LOGGER.error(f'Пароль длиннее 3х символов')
+                _LOGGER.error(f'Пароль длиннее 3х символов: {password}')
                 errors['base'] = 'invalid_password'
+            except InvalidAuthorized:
+                _LOGGER.error(f'Вы ввели неверный пароль: {password}')
+                errors['base'] = 'unauthorized'
+            except (aiohttp.client_exceptions.ClientConnectorError,
+                    asyncio.TimeoutError) as e:
+                _LOGGER.error(f'Контроллер недоступен. Проверьте ip адрес: '
+                              f'{ip}. {e}')
+                errors['base'] = 'megad_not_available'
             except Exception as e:
                 _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
                 errors["base"] = "unknown"
@@ -86,15 +109,20 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input.get('config_menu') == 'write_config':
                 return await self.async_step_write_config()
 
+        menu = {
+            'read_config': 'Прочитать конфигурацию с MegaD',
+            'select_config': 'Выбрать готовую конфигурацию',
+            'write_config': 'Записать конфигурацию на MegaD'
+        }
+        config_list = await get_list_config_megad()
+        if not config_list:
+            menu = {'read_config': 'Прочитать конфигурацию с MegaD'}
+
         return self.async_show_form(
             step_id='get_config',
             data_schema=vol.Schema(
                 {
-                    vol.Required('config_menu'): vol.In({
-                        'read_config': 'Прочитать конфигурацию с MegaD',
-                        'select_config': 'Выбрать готовую конфигурацию',
-                        'write_config': 'Записать конфигурацию на MegaD',
-                    })
+                    vol.Required('config_menu'): vol.In(menu)
                 }
             ),
             errors=errors
@@ -105,13 +133,22 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(user_input)
-
-            await async_read_configuration(
-                self.data['url'],
-                user_input.get('name_file'),
-                async_get_clientsession(self.hass)
-            )
-            return await self.async_step_select_config()
+            if user_input.get('return_main_menu', False):
+                return await self.async_step_get_config()
+            try:
+                await async_read_configuration(
+                    self.data['url'],
+                    user_input.get('name_file'),
+                    async_get_clientsession(self.hass)
+                )
+                return await self.async_step_select_config()
+            except aiohttp.ClientError as e:
+                _LOGGER.error(f'Ошибка запроса к контроллеру '
+                              f'при чтении конфигурации {e}')
+                errors['base'] = 'read_config_error'
+            except Exception as e:
+                _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id='read_config',
@@ -121,7 +158,8 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         schema="name_file",
                         default=f'ip{self.data["ip"].split(".")[-1]}_'
                                 f'{datetime.now().strftime("%Y%m%d")}'
-                    ): str
+                    ): str,
+                    vol.Optional(schema="return_main_menu"): bool
                 }
             ),
             errors=errors
@@ -129,18 +167,21 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_select_config(self, user_input=None):
         """Выбор конфигурации контроллера для создания сущности в НА"""
+
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(user_input)
+            if user_input.get('return_main_menu', False):
+                return await self.async_step_get_config()
 
-        config_list = await asyncio.to_thread(os.listdir, PATH_CONFIG_MEGAD)
-        config_list = [file for file in config_list if file != ".gitkeep"]
+        config_list = await get_list_config_megad()
 
         return self.async_show_form(
             step_id='select_config',
             data_schema=vol.Schema(
                 {
-                    vol.Required('config_list'): vol.In(config_list)
+                    vol.Required('config_list'): vol.In(config_list),
+                    vol.Optional(schema="return_main_menu"): bool
                 }
             ),
             errors=errors
@@ -148,10 +189,13 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_write_config(self, user_input=None):
         """Выбор конфигурации контроллера для создания сущности в НА"""
+
         errors: dict[str, str] = {}
         if user_input is not None:
+            _LOGGER.debug(user_input)
+            if user_input.get('return_main_menu', False):
+                return await self.async_step_get_config()
             try:
-                _LOGGER.debug(user_input)
                 name_file = user_input.get('config_list')
                 file_path = os.path.join(PATH_CONFIG_MEGAD, name_file)
                 _LOGGER.debug(f'file_path: {file_path}')
@@ -173,7 +217,8 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id='write_config',
             data_schema=vol.Schema(
                 {
-                    vol.Required('config_list'): vol.In(config_list)
+                    vol.Required('config_list'): vol.In(config_list),
+                    vol.Optional(schema="return_main_menu"): bool
                 }
             ),
             errors=errors

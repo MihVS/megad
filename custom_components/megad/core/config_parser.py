@@ -17,12 +17,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_fetch_page(url: str, session: aiohttp.ClientSession) -> str:
-    try:
-        async with session.get(url) as response:
-            response.raise_for_status()
-            return await response.text(encoding='cp1251')
-    except aiohttp.ClientError as e:
-        print(f"Error fetching {url}: {e}")
+    """Получение страницы конфигурации контроллера"""
+
+    async with session.get(url) as response:
+        response.raise_for_status()
+        return await response.text(encoding='cp1251')
 
 
 # async def async_get_page_cf1(url: str, session: aiohttp.ClientSession) -> str:

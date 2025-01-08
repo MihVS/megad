@@ -19,3 +19,8 @@ class InvalidPassword(Exception):
 class WriteConfigError(Exception):
     """Ошибка записи конфигурации в контроллер"""
     pass
+
+
+class InvalidAuthorized(Exception):
+    """Ошибка авторизации контроллера"""
+    pass
