@@ -9,7 +9,8 @@ class EnumMegaD(Enum):
         return {}
 
     @classmethod
-    def get_value(cls, value_plc: str):
+    def get_value(cls, value_plc):
+        value_plc = str(value_plc).rstrip()
         return cls.description().get(value_plc)
 
     @property

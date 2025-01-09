@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from pydantic import ValidationError
 
 from http import HTTPStatus
 
@@ -12,9 +13,12 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import DOMAIN, PATH_CONFIG_MEGAD
-from .core.config_parser import async_read_configuration, write_config_megad
+from .core.config_parser import (
+    async_read_configuration, write_config_megad, create_config_megad
+)
 from .core.exceptions import (InvalidIpAddress, WriteConfigError,
                               InvalidPassword, InvalidAuthorized)
+from .core.megad import MegaD
 from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
@@ -173,6 +177,21 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug(user_input)
             if user_input.get('return_main_menu', False):
                 return await self.async_step_get_config()
+            try:
+                name_file = user_input.get('config_list')
+                file_path = str(os.path.join(PATH_CONFIG_MEGAD, name_file))
+                _LOGGER.debug(f'file_path: {file_path}')
+                _LOGGER.debug(f'name_file: {name_file}')
+                megad_config = await create_config_megad(file_path)
+                megad = MegaD(hass=self.hass, config=megad_config)
+                await megad.update_ports()
+                _LOGGER.debug(megad)
+            except ValidationError as e:
+                _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
+                errors["base"] = "validate_config"
+            except Exception as e:
+                _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+                errors["base"] = "unknown"
 
         config_list = await get_list_config_megad()
 

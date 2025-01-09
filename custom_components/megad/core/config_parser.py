@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 
 import aiohttp
 import asyncio
@@ -7,11 +8,18 @@ import aiofiles
 import logging
 
 from bs4 import BeautifulSoup
-import urllib.parse
+from urllib.parse import parse_qsl
 
-from config.custom_components.megad.const import PATH_CONFIG_MEGAD, TITLE_MEGAD
-from config.custom_components.megad.core.exceptions import WriteConfigError
-
+from config.custom_components.megad.const import (
+    PATH_CONFIG_MEGAD, TITLE_MEGAD, MAIN_CONFIG
+)
+from .exceptions import WriteConfigError
+from .models_megad import (
+    DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
+    PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
+    WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
+    AnalogPortConfig, SystemConfigMegaD
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,21 +32,40 @@ async def async_fetch_page(url: str, session: aiohttp.ClientSession) -> str:
         return await response.text(encoding='cp1251')
 
 
-# async def async_get_page_cf1(url: str, session: aiohttp.ClientSession) -> str:
-#     try:
-#         async with session.get(url=url, params={'cf': 1}) as response:
-#             response.raise_for_status()
-#             return await response.text(encoding='windows-1251')
-#     except aiohttp.ClientError as e:
-#         print(f"Error get ip {url}: {e}")
-#
-#
-# async def get_ip(url: str, session: aiohttp.ClientSession) -> str:
-#     """Получить ip из страницы конфигурации №1"""
-#     page_cf1 = await async_get_page_cf1(url, session)
-#     soup = BeautifulSoup(page_cf1, 'lxml')
-#     input_ip = soup.form.find('input', attrs={'name': 'eip'})
-#     return input_ip['value']
+async def async_get_page_config(
+        cf: int, url: str, session: aiohttp.ClientSession) -> str:
+    """Получение страницы конфигурации контроллера"""
+
+    async with session.get(url=url, params={'cf': cf}) as response:
+        response.raise_for_status()
+        return await response.text(encoding='windows-1251')
+
+
+async def get_uptime(page_cf: str) -> int:
+    """Получить время работы контроллера в минутах"""
+
+    soup = BeautifulSoup(page_cf, 'lxml')
+    uptime_text = soup.find(string=lambda text: "Uptime" in text)
+    if uptime_text:
+        uptime = uptime_text.replace("Uptime:", "").strip()
+        days, time = uptime.split('d')
+        days = int(days.strip())
+        hours, minutes = map(int, time.strip().split(':'))
+        delta = timedelta(days=days, hours=hours, minutes=minutes)
+        total_minutes = int(delta.total_seconds() / 60)
+        return total_minutes
+    return -1
+
+
+async def get_temperature_megad(page_cf: str) -> float:
+    """Получить температуру на плате контроллера"""
+
+    soup = BeautifulSoup(page_cf, 'lxml')
+    temp_text = soup.find(string=lambda text: "Temp" in text)
+    if temp_text:
+        temperature = temp_text.replace("Temp:", "").strip()
+        return float(temperature)
+    return -100
 
 
 async def async_parse_pages(url: str, session: aiohttp.ClientSession):
@@ -81,14 +108,14 @@ async def async_process_page(
                 value = inp.get('value', '')
                 if inp.get('type') == "checkbox":
                     value = 'on' if inp.has_attr('checked') else ''
-                url += f"{name}={urllib.parse.quote(value)}&"
+                url += f"{name}={value}&"
 
     for select in soup.find_all('select'):
         name = select.get('name')
         selected_option = select.find('option', selected=True)
         if selected_option:
             value = selected_option.get('value', '')
-            url += f"{name}={urllib.parse.quote(value)}&"
+            url += f"{name}={value}&"
 
     url = url.rstrip('&')
     if url and url != 'cf=<br':
@@ -106,6 +133,7 @@ def _check_url(url: str, check: bool) -> bool:
 
 async def async_read_configuration(
         url: str, name_file: str, session: aiohttp.ClientSession):
+    """Чтение конфигурации с контроллера и запись её в файл"""
     base_url, pages = await async_parse_pages(url, session)
     os.makedirs(os.path.dirname(PATH_CONFIG_MEGAD), exist_ok=True)
     name_file = os.path.join(PATH_CONFIG_MEGAD, name_file)
@@ -132,31 +160,37 @@ async def send_line(url: str, line: str, session: aiohttp.ClientSession):
         raise WriteConfigError(e)
 
 
+async def async_read_config_file(file_path: str) -> list[str]:
+    """Читает файл конфигурации и возвращает список строк"""
+
+    async with aiofiles.open(file_path, "r", encoding="cp1251") as file:
+        return await file.readlines()
+
+
 async def write_config_megad(
         file_path: str, url: str, session: aiohttp.ClientSession):
     """Асинхронное чтение файла и отправка конфига на контроллер."""
 
-    async with aiofiles.open(file_path, "r", encoding="cp1251") as file:
-        lines = await file.readlines()
-        count_lines = len(lines)
-        i = 1
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            await send_line(url, line, session)
-            if i == 1 or i == count_lines:
-                await asyncio.sleep(1)
-            i += 1
+    lines = await async_read_config_file(file_path)
+    count_lines = len(lines)
+    i = 1
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        await send_line(url, line, session)
+        if i == 1 or i == count_lines:
+            await asyncio.sleep(1)
+        i += 1
 
 
 def decode_emt(input_string: str) -> str:
-    """Преобразует поле title в правильную кодировку"""
+    """Преобразует поле title в правильную кодировку для Русского языка"""
 
     teg = f'&{TITLE_MEGAD}'
 
     if teg in input_string:
-        query_params = dict(urllib.parse.parse_qsl(
+        query_params = dict(parse_qsl(
             input_string, keep_blank_values=True)
         )
         emt_value = query_params[TITLE_MEGAD]
@@ -174,3 +208,51 @@ def decode_emt(input_string: str) -> str:
         return output_string[:-1]
     else:
         return input_string
+
+
+async def create_config_megad(file_path: str) -> DeviceMegaD:
+    """Создаёт конфигурацию контроллера из файла"""
+
+    lines: list = await async_read_config_file(file_path)
+    ports = []
+    configs = {}
+    await asyncio.sleep(0)
+
+    for line in lines:
+        params = dict(
+            parse_qsl(line, keep_blank_values=True, encoding='cp1251')
+        )
+        if params.get('cf', '') in ('1', '2'):
+            configs = configs | params
+        elif params.get('pty') == '255':
+            ports.append(PortConfig(**params))
+        elif params.get('pty') == '0':
+            ports.append(PortInConfig(**params))
+        elif params.get('pty') == '1':
+            if params.get('m') in ('0', '3'):
+                ports.append(PortOutRelayConfig(**params))
+            elif params.get('m') == '1':
+                ports.append(PortOutPWMConfig(**params))
+        elif params.get('pty') == '3':
+            if params.get('d') == '3':
+                ports.append(OneWireSensorConfig(**params))
+            elif params.get('d') == '4':
+                ports.append(IButtonConfig(**params))
+            elif params.get('d') == '6':
+                if params.get('m') == '1':
+                    ports.append(WiegandD0Config(**params))
+                else:
+                    ports.append(WiegandConfig(**params))
+            elif params.get('d') in ('1', '2'):
+                ports.append(DHTSensorConfig(**params))
+            else:
+                ports.append(PortSensorConfig(**params))
+        elif params.get('pty') == '4':
+            if params.get('m') == '1':
+                ports.append(I2CSDAConfig(**params))
+            else:
+                ports.append(I2CConfig(**params))
+        elif params.get('pty') == '2':
+            ports.append(AnalogPortConfig(**params))
+
+    return DeviceMegaD(plc=SystemConfigMegaD(**configs), ports=ports)

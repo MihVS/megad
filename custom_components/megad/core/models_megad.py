@@ -37,7 +37,8 @@ class SystemConfigMegaD(BaseModel):
 
     @field_validator('uart', mode='before')
     def convert_uart_type(cls, value):
-        return ConfigUARTMegaD.get_value(value)
+        new_value = ConfigUARTMegaD.get_value(value)
+        return new_value
 
 
 class PortConfig(BaseModel):
@@ -48,10 +49,6 @@ class PortConfig(BaseModel):
     title: str = Field(alias='emt', default='')
     name: str = Field(default='')
 
-    @field_validator('title', mode='before')
-    def decode_title(cls, value):
-        return unquote(value).encode('latin1').decode('windows-1251')
-
     @field_validator('type_port', mode='before')
     def convert_type_port(cls, value):
         return TypePortMegaD.get_value(value)
@@ -59,8 +56,7 @@ class PortConfig(BaseModel):
     @model_validator(mode='before')
     def add_name(cls, data):
         title = data.get('emt', '')
-        decoded_title = unquote(title).encode('latin1').decode('windows-1251')
-        name = decoded_title.split('/')[0]
+        name = title.split('/')[0]
         if name:
             data['name'] = name
         else:
@@ -76,9 +72,8 @@ class DeviceClassConfig(PortConfig):
     @model_validator(mode='before')
     def add_device_class(cls, data):
         title = data.get('emt')
-        decoded_title = unquote(title).encode('latin1').decode('windows-1251')
-        if decoded_title.count('/') > 0:
-            device_class = decoded_title.split('/')[1]
+        if title.count('/') > 0:
+            device_class = title.split('/')[1]
             data.update({'device_class': device_class})
         return data
 
@@ -91,15 +86,13 @@ class InverseValueMixin(DeviceClassConfig):
     @model_validator(mode='before')
     def add_inverse(cls, data):
         title = data.get('emt')
-        decoded_title = unquote(title).encode('latin1').decode('windows-1251')
-        if decoded_title.count('/') > 1:
-            inverse = decoded_title.split('/')[2]
+        if title.count('/') > 1:
+            inverse = title.split('/')[2]
             data.update({'inverse': inverse})
         return data
 
     @field_validator('inverse', mode='before')
     def set_inverse(cls, value):
-        print(value)
         match value:
             case '1':
                 return True
@@ -117,21 +110,13 @@ class ActionPortMixin:
         alias='naf', default=TypeNetActionMegaD.D
     )
 
-    @field_validator('action')
-    def decode_action(cls, value):
-        return unquote(value)
-
     @field_validator('execute_action', mode='before')
     def convert_execute_action(cls, value):
         match value:
-            case 'on':
+            case 'on' | '1' | 1:
                 return True
             case '':
                 return False
-
-    @field_validator('net_action')
-    def decode_net_action(cls, value):
-        return unquote(value)
 
     @field_validator('execute_net_action', mode='before')
     def convert_execute_net_action(cls, value):
@@ -339,7 +324,7 @@ class DeviceMegaD(BaseModel):
     plc: SystemConfigMegaD
     ports: list[Union[
         PortConfig, PortInConfig, PortOutConfig, PortOutRelayConfig,
-        PortOutPWMConfig, PortSensorConfig, OneWireSensorConfig, DHTSensorConfig,
-        IButtonConfig, WiegandConfig, WiegandD0Config, I2CConfig, I2CSDAConfig,
-        AnalogPortConfig
+        PortOutPWMConfig, PortSensorConfig, OneWireSensorConfig,
+        DHTSensorConfig, IButtonConfig, WiegandConfig, WiegandD0Config,
+        I2CConfig, I2CSDAConfig, AnalogPortConfig
     ]]
