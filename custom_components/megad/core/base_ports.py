@@ -30,7 +30,29 @@ class BasePort(ABC):
                 f"state={self._state}), name={self.conf.name})>")
 
 
-class BinaryPortIn(BasePort):
+class BinaryPort(BasePort, ABC):
+    """Базовый бинарный порт"""
+
+    def __init__(self, conf: PortInConfig):
+        super().__init__(conf)
+        self.conf: PortInConfig = conf
+        self._state: bool = False
+        self._count: int = 0
+
+    @property
+    def count(self):
+        return self._count
+
+    def _validate_row_data(self, raw_data: str):
+        """Валидации правильного формата данных для бинарных портов"""
+
+        pattern = r"^[a-zA-Z0-9]+/\d+$"
+        if not re.match(pattern, raw_data):
+            raise UpdateStateError(f'invalid state port_in №{self.conf.id}: '
+                                   f'{raw_data}')
+
+
+class BinaryPortIn(BinaryPort):
     """
     http://192.168.113.171:5001/megad?pt=1&m=1&cnt=2&mdid=55555 P
     http://192.168.113.171:5001/megad?pt=1&m=1&cnt=1&mdid=55555 R
@@ -49,16 +71,13 @@ class BinaryPortIn(BasePort):
 
     def __init__(self, conf: PortInConfig):
         super().__init__(conf)
-        self.conf: PortInConfig = conf
         self._state: bool = False
-        self._count: int = 0
-
-    @property
-    def count(self):
-        return self._count
 
     def update_state(self, raw_data: str):
-        """raw data: OFF/7"""
+        """
+        raw data: OFF/7
+        raw data: pt=1&m=1&cnt=2&mdid=55555
+        """
 
         pattern = r"^[a-zA-Z0-9]+/\d+$"
         if not re.match(pattern, raw_data):
@@ -73,6 +92,28 @@ class BinaryPortIn(BasePort):
                 state = False
 
         self._state = not state if self.conf.inverse else state
+
+        self._count = int(count)
+
+
+class BinaryPortClick(BinaryPort):
+    """
+    http://192.168.113.171:5001/megad?pt=1&click=1&cnt=4&mdid=55555 C
+    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=6&mdid=55555
+    """
+
+    def __init__(self, conf: PortInConfig):
+        super().__init__(conf)
+        self._state: str = 'off'
+
+    def update_state(self, raw_data: str):
+        """raw data: OFF/7"""
+
+        pattern = r"^[a-zA-Z0-9]+/\d+$"
+        if not re.match(pattern, raw_data):
+            raise UpdateStateError(f'invalid state port_in: {raw_data}')
+
+        state, count = raw_data.split('/')
 
         self._count = int(count)
 
@@ -116,3 +157,16 @@ class PWMPortOut(BasePort):
 
         self._state = int(raw_data)
 
+"""
+1. Надо подумать как реализовать обновление данных в разном формате. Как при опросе
+контроллера, так и при ответе контроллера на любое событие.
+
+2. Реализовать добавление всех видов бинарных сенсоров в НА
+* обычный бинарный
+* кнопочный с определением 1, 2, и долгого нажатия
+* бинарный который шлёт на сервер только одно изменение состояния. такой бинарный
+должен добавлять в НА только счётчик изменения состояния
+можно ещё подумать логику при обнулении счетчика на меге когда число превысит 255
+
+3. Реализовать сервер который будет принимать ответы от меги
+"""
