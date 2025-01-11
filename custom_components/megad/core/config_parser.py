@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import parse_qsl
 
 from config.custom_components.megad.const import (
-    PATH_CONFIG_MEGAD, TITLE_MEGAD, MAIN_CONFIG
+    PATH_CONFIG_MEGAD, TITLE_MEGAD, MAIN_CONFIG, NAME_SCRIPT_MEGAD
 )
 from .exceptions import WriteConfigError
 from .models_megad import (
@@ -66,6 +66,14 @@ async def get_temperature_megad(page_cf: str) -> float:
         temperature = temp_text.replace("Temp:", "").strip()
         return float(temperature)
     return -100
+
+
+async def get_slug_server(page_cf: str) -> str:
+    """Получает поле script в интерфейсе конфигурации megad"""
+
+    soup = BeautifulSoup(page_cf, 'lxml')
+    teg = soup.find('input', {'name': NAME_SCRIPT_MEGAD})
+    return teg.get('value')
 
 
 async def async_parse_pages(url: str, session: aiohttp.ClientSession):

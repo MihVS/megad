@@ -24,3 +24,8 @@ class WriteConfigError(Exception):
 class InvalidAuthorized(Exception):
     """Ошибка авторизации контроллера"""
     pass
+
+
+class InvalidSlug(Exception):
+    """Неправильный slug указан в поле script контроллера."""
+    pass

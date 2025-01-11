@@ -1,24 +1,23 @@
 import asyncio
-import aiohttp
 import logging
 import os
 import re
 from datetime import datetime
-from pydantic import ValidationError
-
 from http import HTTPStatus
 
+import aiohttp
 import voluptuous as vol
+from pydantic import ValidationError
 
 from homeassistant import config_entries
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import DOMAIN, PATH_CONFIG_MEGAD
 from .core.config_parser import (
-    async_read_configuration, write_config_megad, create_config_megad
+    async_read_configuration, write_config_megad, async_get_page_config,
+    get_slug_server, create_config_megad
 )
 from .core.exceptions import (InvalidIpAddress, WriteConfigError,
-                              InvalidPassword, InvalidAuthorized)
-from .core.megad import MegaD
+                              InvalidPassword, InvalidAuthorized, InvalidSlug)
 from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +49,15 @@ async def validate_password(url: str, session: aiohttp.ClientSession) -> None:
         code = response.status
         if code == HTTPStatus.UNAUTHORIZED:
             raise InvalidAuthorized
+
+
+async def validate_slug(url: str, session: aiohttp.ClientSession) -> None:
+    """Валидация поля script в контроллере. Должно быть = megad."""
+
+    page = await async_get_page_config(1, url, session)
+    slug = await get_slug_server(page)
+    if slug != DOMAIN:
+        raise InvalidSlug
 
 
 class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -178,18 +186,25 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input.get('return_main_menu', False):
                 return await self.async_step_get_config()
             try:
+                await validate_slug(
+                    self.data.get('url'),
+                    async_get_clientsession(self.hass)
+                )
                 name_file = user_input.get('config_list')
                 file_path = str(os.path.join(PATH_CONFIG_MEGAD, name_file))
+                self.data['file_path'] = file_path
                 _LOGGER.debug(f'file_path: {file_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
-                # megad_config = await create_config_megad(file_path)
-                # megad = MegaD(hass=self.hass, config=megad_config)
-                # await megad.update_ports()
-                # _LOGGER.debug(megad)
+                megad_config = await create_config_megad(file_path)
+                self.data['megad_config'] = megad_config
                 return self.async_create_entry(
                     title='Test',
-                    data=user_input,
+                    data=self.data,
                 )
+            except InvalidSlug:
+                _LOGGER.error(f'Проверьте в настройках контроллера поле Script.'
+                              f'Оно должно быть = megad.')
+                errors["base"] = "validate_slug"
             except ValidationError as e:
                 _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
                 errors["base"] = "validate_config"
