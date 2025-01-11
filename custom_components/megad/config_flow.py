@@ -182,10 +182,14 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 file_path = str(os.path.join(PATH_CONFIG_MEGAD, name_file))
                 _LOGGER.debug(f'file_path: {file_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
-                megad_config = await create_config_megad(file_path)
-                megad = MegaD(hass=self.hass, config=megad_config)
-                await megad.update_ports()
-                _LOGGER.debug(megad)
+                # megad_config = await create_config_megad(file_path)
+                # megad = MegaD(hass=self.hass, config=megad_config)
+                # await megad.update_ports()
+                # _LOGGER.debug(megad)
+                return self.async_create_entry(
+                    title='Test',
+                    data=user_input,
+                )
             except ValidationError as e:
                 _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
                 errors["base"] = "validate_config"
