@@ -17,5 +17,7 @@ class MegadHttpView(HomeAssistantView):
     async def get(self, request: Request):
         """Обрабатываем GET-запрос."""
 
-        _LOGGER.debug(f'MegaD request: {request.query_string}')
-        # _LOGGER.debug(f'MegaD request4: {dict(request.query)}')
+        params: dict = dict(request.query)
+        _LOGGER.debug(f'MegaD request4: {params}')
+        id_megad = params.get('mdid')
+        port = params.get('pt')

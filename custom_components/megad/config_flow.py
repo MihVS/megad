@@ -18,6 +18,7 @@ from .core.config_parser import (
 )
 from .core.exceptions import (InvalidIpAddress, WriteConfigError,
                               InvalidPassword, InvalidAuthorized, InvalidSlug)
+from .core.models_megad import DeviceMegaD
 from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
@@ -169,7 +170,7 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         schema="name_file",
                         default=f'ip{self.data["ip"].split(".")[-1]}_'
-                                f'{datetime.now().strftime("%Y%m%d")}'
+                                f'{datetime.now().strftime("%Y%m%d")}.cfg'
                     ): str,
                     vol.Optional(schema="return_main_menu"): bool
                 }
@@ -196,14 +197,15 @@ class MegaDConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug(f'file_path: {file_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
                 megad_config = await create_config_megad(file_path)
-                self.data['megad_config'] = megad_config
+                json_data = megad_config.model_dump_json(indent=2)
+                _LOGGER.debug(f'megad_config_json: \n{type(json_data)}')
                 return self.async_create_entry(
-                    title='Test',
-                    data=self.data,
+                    title=megad_config.plc.megad_id,
+                    data=self.data
                 )
             except InvalidSlug:
-                _LOGGER.error(f'Проверьте в настройках контроллера поле Script.'
-                              f'Оно должно быть = megad.')
+                _LOGGER.error(f'Проверьте в настройках контроллера поле '
+                              f'Script. Оно должно быть = megad.')
                 errors["base"] = "validate_slug"
             except ValidationError as e:
                 _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')

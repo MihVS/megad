@@ -43,77 +43,157 @@ class BinaryPort(BasePort, ABC):
     def count(self):
         return self._count
 
-    def _validate_row_data(self, raw_data: str):
+    def _validate_general_request_data(self, data: str):
         """Валидации правильного формата данных для бинарных портов"""
 
         pattern = r"^[a-zA-Z0-9]+/\d+$"
-        if not re.match(pattern, raw_data):
-            raise UpdateStateError(f'invalid state port_in №{self.conf.id}: '
-                                   f'{raw_data}')
+        if not re.match(pattern, data):
+            raise UpdateStateError(f'Неизвестный формат данных для порта '
+                                   f'BinaryPort (id={self.conf.id}): {data}')
 
 
 class BinaryPortIn(BinaryPort):
-    """
-    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=2&mdid=55555 P
-    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=1&mdid=55555 R
-    http://192.168.113.171:5001/megad?pt=2&cnt=1&mdid=55555 pr
-    http://192.168.113.171:5001/megad?pt=2&m=1&cnt=2&mdid=55555 PR
-    http://192.168.113.171:5001/megad?pt=1&click=1&cnt=4&mdid=55555 C
-    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=6&mdid=55555
-
-    /megad?pt=1&cnt=1&mdid=55555 press
-
-    /megad?pt=2&cnt=1&mdid=55555 PR нажат
-    /megad?pt=2&m=1&cnt=2&mdid=55555 PR отжат
-
-    /megad?pt=3&m=1&cnt=1&mdid=55555 release
-    """
+    """Кла настроенный как бинарный сенсор"""
 
     def __init__(self, conf: PortInConfig):
         super().__init__(conf)
         self._state: bool = False
 
-    def update_state(self, raw_data: str):
+    def update_state(self, data: str | dict):
         """
-        raw data: OFF/7
-        raw data: pt=1&m=1&cnt=2&mdid=55555
+        data: ON
+        data: OFF/7
+        data: {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
         """
 
-        pattern = r"^[a-zA-Z0-9]+/\d+$"
-        if not re.match(pattern, raw_data):
-            raise UpdateStateError(f'invalid state port_in: {raw_data}')
+        count = self._count
 
-        state, count = raw_data.split('/')
-
-        match state:
-            case 'ON' | '1':
-                state = True
-            case _:
-                state = False
+        if isinstance(data, str):
+            states = data.split('/')
+            if len(states) == 1:
+                state = states[0]
+            else:
+                self._validate_general_request_data(data)
+                state, count = states
+            state = state.lower()
+            match state:
+                case 'on' | '1':
+                    state = True
+                case _:
+                    state = False
+        elif isinstance(data, dict):
+            state = data.get('m')
+            count = data.get('cnt')
+            match state:
+                case '1':
+                    state = False
+                case '2':
+                    pass
+                case _:
+                    state = False
+        else:
+            raise UpdateStateError(f'Неизвестный формат данных для порта '
+                                   f'binary sensor (id={self.conf.id}): '
+                                   f'{data}')
 
         self._state = not state if self.conf.inverse else state
-
         self._count = int(count)
 
 
 class BinaryPortClick(BinaryPort):
-    """
-    http://192.168.113.171:5001/megad?pt=1&click=1&cnt=4&mdid=55555 C
-    http://192.168.113.171:5001/megad?pt=1&m=1&cnt=6&mdid=55555
-    """
+    """Класс для порта настроенного как нажатие."""
 
     def __init__(self, conf: PortInConfig):
         super().__init__(conf)
         self._state: str = 'off'
 
-    def update_state(self, raw_data: str):
-        """raw data: OFF/7"""
+    def _get_state(self, data: dict) -> str:
+        """Получает статус кнопки из исходных данных"""
 
-        pattern = r"^[a-zA-Z0-9]+/\d+$"
-        if not re.match(pattern, raw_data):
-            raise UpdateStateError(f'invalid state port_in: {raw_data}')
+        state: str = self._state
+        click = data.get('click')
+        long_press = data.get('m')
+        if click:
+            match click:
+                case '1':
+                    state = 'single'
+                case '2':
+                    state = 'double'
+                case _:
+                    pass
+        elif long_press:
+            match long_press:
+                case '2':
+                    state = 'long'
+                case _:
+                    pass
+        else:
+            raise UpdateStateError(f'Неизвестный формат данных для порта '
+                                   f'click (id={self.conf.id}): {data}')
 
-        state, count = raw_data.split('/')
+        return state
+
+    def update_state(self, data: str | dict):
+        """
+        data: off, single, double, long
+              OFF/7
+              {'pt': '1', 'click': '1', 'cnt': '6', 'mdid': '55555'}
+              {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
+        """
+
+        count = self._count
+        state = self._state
+
+        if isinstance(data, str):
+            states = data.split('/')
+            if len(states) == 1:
+                state = states[0].lower()
+            else:
+                self._validate_general_request_data(data)
+                state, count = states
+            match state:
+                case 'single':
+                    state = 'single'
+                case 'double':
+                    state = 'double'
+                case 'long':
+                    state = 'long'
+                case _:
+                    state = 'off'
+
+        elif isinstance(data, dict):
+            self._state = self._get_state(data)
+        else:
+            raise UpdateStateError(f'Неизвестный формат данных для порта '
+                                   f'click (id={self.conf.id}): {data}')
+
+        self._state = state
+        self._count = int(count)
+
+
+class BinaryPortCount(BinaryPort):
+    """Класс настроенный как бинарный сенсор для счетчиков"""
+
+    def __init__(self, conf: PortInConfig):
+        super().__init__(conf)
+        self._state = None
+
+    def update_state(self, data: str | dict):
+        """
+        data: OFF/7
+              {'pt': '3', 'm': '1', 'cnt': '3', 'mdid': '55555'}
+              {'pt': '3', 'cnt': '2', 'mdid': '55555'}
+              {'pt': '3', 'm': '2', 'cnt': '2', 'mdid': '55555'}
+        """
+
+        if isinstance(data, str):
+            self._validate_general_request_data(data)
+            _, count = data.split('/')
+        elif isinstance(data, dict):
+            count = data.get('cnt')
+        else:
+            raise UpdateStateError(f'Неизвестный формат данных для порта '
+                                   f'count (id={self.conf.id}): {data}')
 
         self._count = int(count)
 
@@ -156,17 +236,3 @@ class PWMPortOut(BasePort):
         """raw data: 100"""
 
         self._state = int(raw_data)
-
-"""
-1. Надо подумать как реализовать обновление данных в разном формате. Как при опросе
-контроллера, так и при ответе контроллера на любое событие.
-
-2. Реализовать добавление всех видов бинарных сенсоров в НА
-* обычный бинарный
-* кнопочный с определением 1, 2, и долгого нажатия
-* бинарный который шлёт на сервер только одно изменение состояния. такой бинарный
-должен добавлять в НА только счётчик изменения состояния
-можно ещё подумать логику при обнулении счетчика на меге когда число превысит 255
-
-3. Реализовать сервер который будет принимать ответы от меги
-"""

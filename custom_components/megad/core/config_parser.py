@@ -41,7 +41,7 @@ async def async_get_page_config(
         return await response.text(encoding='windows-1251')
 
 
-async def get_uptime(page_cf: str) -> int:
+def get_uptime(page_cf: str) -> int:
     """Получить время работы контроллера в минутах"""
 
     soup = BeautifulSoup(page_cf, 'lxml')
@@ -57,7 +57,7 @@ async def get_uptime(page_cf: str) -> int:
     return -1
 
 
-async def get_temperature_megad(page_cf: str) -> float:
+def get_temperature_megad(page_cf: str) -> float:
     """Получить температуру на плате контроллера"""
 
     soup = BeautifulSoup(page_cf, 'lxml')
@@ -66,6 +66,15 @@ async def get_temperature_megad(page_cf: str) -> float:
         temperature = temp_text.replace("Temp:", "").strip()
         return float(temperature)
     return -100
+
+
+def get_version_software(page_cf: str) -> str:
+    """Получить версию прошивки контроллера"""
+
+    soup = BeautifulSoup(page_cf, 'lxml')
+    software_text = soup.find(string=lambda text: '(fw:' in text)
+    software = software_text.replace("(fw:", "").strip().strip(')')
+    return software
 
 
 async def get_slug_server(page_cf: str) -> str:
