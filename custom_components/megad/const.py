@@ -19,4 +19,6 @@ MAIN_CONFIG = 1
 ID_CONFIG = 2
 VIRTUAL_PORTS_CONFIG = 5
 
-PLATFORMS = []
+PLATFORMS = [
+    'binary_sensor',
+]

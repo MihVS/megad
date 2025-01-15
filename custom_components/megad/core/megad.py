@@ -25,8 +25,10 @@ class MegaD:
             hass: HomeAssistant,
             config: DeviceMegaD
     ):
+        self.hass = hass
         self.session = async_get_clientsession(hass)
         self.config: DeviceMegaD = config
+        self.id = config.plc.megad_id
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut
@@ -97,3 +99,10 @@ class MegaD:
                 self.ports.append(count)
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
+
+    def update_port(self, port_id, data):
+        """Обновить данные порта по его id"""
+
+        for port in self.ports:
+            if port.conf.id == port_id:
+                port.update_state(data)

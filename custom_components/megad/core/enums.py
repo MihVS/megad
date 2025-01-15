@@ -110,13 +110,13 @@ class DeviceClassBinary(Enum):
     """Бинарные классы Home Assistant"""
 
     NONE = ''
-    DOOR = 'door'
-    GARAGE_DOOR = 'garage_door'
-    LOCK = 'lock'
-    MOISTURE = 'moisture'
-    MOTION = 'motion'
-    SMOKE = 'smoke'
-    WINDOW = 'window'
+    DOOR = 'd'
+    GARAGE_DOOR = 'gd'
+    LOCK = 'l'
+    MOISTURE = 'ms'
+    MOTION = 'm'
+    SMOKE = 's'
+    WINDOW = 'w'
 
 
 class ModeOutMegaD(EnumMegaD):

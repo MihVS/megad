@@ -38,7 +38,7 @@ async def async_setup_entry(
     megad = MegaD(hass=hass, config=megad_config)
     # await megad.update_data()
     _LOGGER.debug(megad)
-    coordinator = MegaDCoordinator(hass, megad)
+    coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry_id] = coordinator
@@ -57,7 +57,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name="MegaD",
+            name=f'MegaD Coordinator id: {megad.id}',
             update_interval=timedelta(seconds=TIME_UPDATE),
         )
         self.megad: MegaD = megad

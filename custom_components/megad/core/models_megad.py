@@ -145,19 +145,19 @@ class PortInConfig(InverseValueMixin, ActionPortMixin):
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):
         match value:
-            case 'door':
+            case DeviceClassBinary.DOOR.value:
                 return DeviceClassBinary.DOOR
-            case 'garage_door':
+            case DeviceClassBinary.GARAGE_DOOR.value:
                 return DeviceClassBinary.GARAGE_DOOR
-            case 'lock':
+            case DeviceClassBinary.LOCK.value:
                 return DeviceClassBinary.LOCK
-            case 'moisture':
+            case DeviceClassBinary.MOISTURE.value:
                 return DeviceClassBinary.MOISTURE
-            case 'motion':
+            case DeviceClassBinary.MOTION.value:
                 return DeviceClassBinary.MOTION
-            case 'smoke':
+            case DeviceClassBinary.SMOKE.value:
                 return DeviceClassBinary.SMOKE
-            case 'window':
+            case DeviceClassBinary.WINDOW.value:
                 return DeviceClassBinary.WINDOW
             case _:
                 return DeviceClassBinary.NONE
