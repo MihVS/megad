@@ -100,10 +100,12 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
         # Надо подумать как обработать порт который возвращает None
         port = self.megad.get_port(port_id)
+        if port is None:
+            return
         if port.conf.mode == ModeInMegaD.C:
             self.megad.update_port(port_id, data)
             self.async_set_updated_data(self.megad)
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             self.megad.update_port(port_id, 'off')
             self.async_set_updated_data(self.megad)
         else:
