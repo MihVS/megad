@@ -74,7 +74,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
         return device_info
 
     async def _async_update_data(self):
-        """Обновление данных megad"""
+        """Обновление всех данных megad"""
 
         try:
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
@@ -92,3 +92,9 @@ class MegaDCoordinator(DataUpdateCoordinator):
             else:
                 raise UpdateFailed(f"Ошибка соединения с контроллером id: "
                                    f"{self.megad.config.plc.megad_id}: {err}")
+
+    async def update_port_state(self, port_id, data):
+        """Обновление состояния конкретного порта."""
+
+        self.megad.update_port(port_id, data)
+        self.async_set_updated_data(self.megad)

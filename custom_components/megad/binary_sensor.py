@@ -100,7 +100,8 @@ class BinarySensorMegaD(CoordinatorEntity, BinarySensorEntity):
     # def _handle_coordinator_update(self) -> None:
     #     """Обработка обновлённых данных от координатора"""
     #
-    #     _LOGGER.info(self.coordinator)
+    #     # _LOGGER.info(self._port.conf.id)
+    #     # _LOGGER.info(self._port.state)
     #     # port: BinaryPortIn = self.coordinator.
     #     # self._sensor = sensor
     #     self.async_write_ha_state()

@@ -25,7 +25,7 @@ class MegadHttpView(HomeAssistantView):
 
         host = request.remote
         params: dict = dict(request.query)
-        _LOGGER.debug(f'MegaD request4: {params}')
+        _LOGGER.debug(f'MegaD request: {params}')
         hass = request.app['hass']
         entry_ids = hass.data[DOMAIN]
         id_megad = params.get('mdid')
@@ -33,19 +33,13 @@ class MegadHttpView(HomeAssistantView):
         coordinator = None
         for entry_id in entry_ids:
             coordinator_temp = hass.data[DOMAIN][entry_id]
-            _LOGGER.info(f'coordinator: {coordinator_temp}')
             if coordinator_temp.megad.id == id_megad:
                 coordinator = coordinator_temp
 
-        # coordinator = next(
-        #     (coordinator for coordinator in coordinators
-        #      if coordinator.megad.id == id_megad),
-        #     None
-        # )
         if coordinator is None:
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')
             return Response(status=HTTPStatus.NOT_FOUND)
 
         if port_id is not None:
-            coordinator.megad.update_port(port_id=port_id, data=params)
-            # coordinator.async_set_updated_data(coordinator.megad)
+            _LOGGER.info(f'port_id: {port_id}')
+            await coordinator.update_port_state(port_id=port_id, data=params)

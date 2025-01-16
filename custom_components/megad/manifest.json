@@ -7,6 +7,10 @@
   "config_flow": true,
   "integration_type": "hub",
   "dependencies": ["http", "zeroconf"],
-  "requirements": [],
+  "requirements": [
+    "beautifulsoup4",
+    "lxml",
+    "aiofiles"
+  ],
   "version": "2025.1.0"
 }

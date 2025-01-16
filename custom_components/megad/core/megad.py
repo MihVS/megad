@@ -2,7 +2,8 @@ import logging
 from typing import Union
 
 from .base_ports import (
-    BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount
+    BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
+    BasePort
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -103,6 +104,29 @@ class MegaD:
     def update_port(self, port_id, data):
         """Обновить данные порта по его id"""
 
-        for port in self.ports:
-            if port.conf.id == port_id:
-                port.update_state(data)
+        port = self.get_port(port_id)
+        if port:
+            old_state = port.state
+            port.update_state(data)
+            new_state = port.state
+            self._check_change_port(port, old_state, new_state)
+
+    def get_port(self, port_id):
+        """Получить порт по его id"""
+
+        return next(
+            (port for port in self.ports
+             if port.conf.id == int(port_id)),
+            None
+        )
+
+    def _check_change_port(
+            self, port: BasePort, old_state: str, new_state: str) -> bool:
+        """Проверяет новое и старое состояния портов."""
+
+        if old_state != new_state:
+            _LOGGER.debug(f'Порт №{port.conf.id} - {port.conf.name}, '
+                          f'устройства id:{self.id}, '
+                          f'изменил состояние с {old_state} на {new_state}')
+            return True
+        return False

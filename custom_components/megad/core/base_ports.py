@@ -88,9 +88,9 @@ class BinaryPortIn(BinaryPort):
                 case '1':
                     state = False
                 case '2':
-                    pass
+                    state = self.state
                 case _:
-                    state = False
+                    state = True
         else:
             raise UpdateStateError(f'Неизвестный формат данных для порта '
                                    f'binary sensor (id={self.conf.id}): '
@@ -120,13 +120,13 @@ class BinaryPortClick(BinaryPort):
                 case '2':
                     state = 'double'
                 case _:
-                    pass
+                    state = self.state
         elif long_press:
             match long_press:
                 case '2':
                     state = 'long'
                 case _:
-                    pass
+                    state = self.state
         else:
             raise UpdateStateError(f'Неизвестный формат данных для порта '
                                    f'click (id={self.conf.id}): {data}')
