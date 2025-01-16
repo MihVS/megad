@@ -19,6 +19,9 @@ MAIN_CONFIG = 1
 ID_CONFIG = 2
 VIRTUAL_PORTS_CONFIG = 5
 
+STATE_BUTTON = ["single", "double", "long", "off"]
+
 PLATFORMS = [
     'binary_sensor',
+    'sensor',
 ]

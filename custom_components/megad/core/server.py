@@ -41,5 +41,5 @@ class MegadHttpView(HomeAssistantView):
             return Response(status=HTTPStatus.NOT_FOUND)
 
         if port_id is not None:
-            _LOGGER.info(f'port_id: {port_id}')
+            # _LOGGER.info(f'port_id: {port_id}')
             await coordinator.update_port_state(port_id=port_id, data=params)

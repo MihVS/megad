@@ -61,8 +61,8 @@ class BinarySensorMegaD(CoordinatorEntity, BinarySensorEntity):
 
     @cached_property
     def name(self) -> str:
-        if 'port' in self._binary_sensor_name:
-            return f'{self._megad.id}_{self._binary_sensor_name}'
+        # if 'port' in self._binary_sensor_name:
+        #     return f'{self._megad.id}_{self._binary_sensor_name}'
         return self._binary_sensor_name
 
     @cached_property

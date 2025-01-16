@@ -162,7 +162,7 @@ class BinaryPortClick(BinaryPort):
                     state = 'off'
 
         elif isinstance(data, dict):
-            self._state = self._get_state(data)
+            state = self._get_state(data)
         else:
             raise UpdateStateError(f'Неизвестный формат данных для порта '
                                    f'click (id={self.conf.id}): {data}')

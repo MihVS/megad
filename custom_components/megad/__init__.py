@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -9,6 +10,7 @@ from .const import (
     PLATFORMS
 )
 from .core.config_parser import create_config_megad
+from .core.enums import ModeInMegaD
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD
 from .core.server import MegadHttpView
@@ -36,7 +38,6 @@ async def async_setup_entry(
     file_path = config_entry.data.get('file_path')
     megad_config = await create_config_megad(file_path)
     megad = MegaD(hass=hass, config=megad_config)
-    # await megad.update_data()
     _LOGGER.debug(megad)
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
@@ -86,7 +87,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning(
                     f'Неудачная попытка обновления данных контроллера '
                     f'id: {self.megad.config.plc.megad_id}. Ошибка: {err}.'
-                    f'Осталось попыток: {COUNTER_CONNECT - self._count_connect}'
+                    f'Осталось попыток: '
+                    f'{COUNTER_CONNECT - self._count_connect}'
                 )
                 return self.megad
             else:
@@ -96,5 +98,14 @@ class MegaDCoordinator(DataUpdateCoordinator):
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""
 
-        self.megad.update_port(port_id, data)
-        self.async_set_updated_data(self.megad)
+        # Надо подумать как обработать порт который возвращает None
+        port = self.megad.get_port(port_id)
+        if port.conf.mode == ModeInMegaD.C:
+            self.megad.update_port(port_id, data)
+            self.async_set_updated_data(self.megad)
+            await asyncio.sleep(1)
+            self.megad.update_port(port_id, 'off')
+            self.async_set_updated_data(self.megad)
+        else:
+            self.megad.update_port(port_id, data)
+            self.async_set_updated_data(self.megad)
