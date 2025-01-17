@@ -199,11 +199,11 @@ class PortOutRelayConfig(PortOutConfig, InverseValueMixin):
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):
         match value:
-            case 'switch':
+            case DeviceClassControl.SWITCH.value:
                 return DeviceClassControl.SWITCH
-            case 'light':
+            case DeviceClassControl.LIGHT.value:
                 return DeviceClassControl.LIGHT
-            case 'fan':
+            case DeviceClassControl.FAN.value:
                 return DeviceClassControl.FAN
             case _:
                 return DeviceClassControl.SWITCH
@@ -221,9 +221,9 @@ class PortOutPWMConfig(PortOutConfig):
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):
         match value:
-            case 'light':
+            case DeviceClassControl.LIGHT.value:
                 return DeviceClassControl.LIGHT
-            case 'fan':
+            case DeviceClassControl.FAN.value:
                 return DeviceClassControl.FAN
             case _:
                 return DeviceClassControl.LIGHT

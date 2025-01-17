@@ -142,9 +142,9 @@ class ModeOutMegaD(EnumMegaD):
 class DeviceClassControl(Enum):
     """Класс управления в Home Assistant"""
 
-    SWITCH = 'switch'
-    LIGHT = 'light'
-    FAN = 'fan'
+    SWITCH = 's'
+    LIGHT = 'l'
+    FAN = 'f'
 
 
 class TypeDSensorMegaD(EnumMegaD):

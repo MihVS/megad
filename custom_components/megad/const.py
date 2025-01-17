@@ -31,6 +31,9 @@ CLICK = 'click'
 StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
 STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")
 
+PortCommand = namedtuple('PortCommand', ['ON', 'OFF', 'TOGGLE'])
+PORT_COMMAND = PortCommand(ON='1', OFF='0', TOGGLE='2')
+
 STATE_RELAY = ['on', 'off', '1', '0']
 RELAY_ON = ['1', 'on']
 RELAY_OFF = ['0', 'off']

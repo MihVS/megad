@@ -9,7 +9,7 @@ from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
     get_version_software
 )
-from .enums import TypePortMegaD, ModeInMegaD
+from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD
 from .models_megad import DeviceMegaD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -98,6 +98,12 @@ class MegaD:
             elif port.type_port == TypePortMegaD.IN:
                 count = BinaryPortCount(port)
                 self.ports.append(count)
+            elif (
+                    port.type_port == TypePortMegaD.OUT
+                    and (port.mode in (ModeOutMegaD.SW, ModeOutMegaD.SW_LINK))
+            ):
+                relay = ReleyPortOut(port)
+                self.ports.append(relay)
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 
@@ -119,6 +125,20 @@ class MegaD:
              if port.conf.id == int(port_id)),
             None
         )
+
+    async def set_port(self, port_id, command):
+        """Управление выходом релейным и шим"""
+
+        params = {'cmd': f'{port_id}:{command}'}
+        response = await self.session.get(url=self.url, params=params)
+        text = await response.text()
+        match text:
+            case 'busy':
+                _LOGGER.warning(f'Не удалось изменить состояние порта '
+                                f'№{port_id}. Команда: {command}')
+            case _:
+                _LOGGER.debug(f'Порт №{port_id} изменил состояние '
+                              f'на {command}')
 
     def _check_change_port(
             self, port: BasePort, old_state: str, new_state: str) -> bool:

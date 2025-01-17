@@ -6,11 +6,10 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass, BinarySensorEntity
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-
 from .const import DOMAIN
 from .core.base_ports import BinaryPortIn
 from .core.enums import DeviceClassBinary
@@ -61,8 +60,6 @@ class BinarySensorMegaD(CoordinatorEntity, BinarySensorEntity):
 
     @cached_property
     def name(self) -> str:
-        # if 'port' in self._binary_sensor_name:
-        #     return f'{self._megad.id}_{self._binary_sensor_name}'
         return self._binary_sensor_name
 
     @cached_property
@@ -95,13 +92,3 @@ class BinarySensorMegaD(CoordinatorEntity, BinarySensorEntity):
                 return BinarySensorDeviceClass.WINDOW
             case _:
                 return None
-
-    # @callback
-    # def _handle_coordinator_update(self) -> None:
-    #     """Обработка обновлённых данных от координатора"""
-    #
-    #     # _LOGGER.info(self._port.conf.id)
-    #     # _LOGGER.info(self._port.state)
-    #     # port: BinaryPortIn = self.coordinator.
-    #     # self._sensor = sensor
-    #     self.async_write_ha_state()
