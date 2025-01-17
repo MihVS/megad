@@ -1,13 +1,14 @@
-from abc import ABC, abstractmethod
-import re
 import logging
-
+import re
+from abc import ABC, abstractmethod
 
 from .exceptions import UpdateStateError
 from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
                            PortOutPWMConfig,
                            )
-
+from ..const import (STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK,
+                     STATE_BUTTON
+                     )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +44,11 @@ class BinaryPort(BasePort, ABC):
         self.conf: PortInConfig = conf
         self._state: bool = False
         self._count: int = 0
+
+    def __repr__(self):
+        return (f"<Port(id={self.conf.id}, type={self.conf.type_port}, "
+                f"state={self._state}), name={self.conf.name}, "
+                f"count={self._count})>")
 
     @property
     def count(self):
@@ -89,8 +95,8 @@ class BinaryPortIn(BinaryPort):
                     case _:
                         state = False
             elif isinstance(data, dict):
-                state = data.get('m')
-                count = data.get('cnt')
+                state = data.get(MODE)
+                count = data.get(COUNT)
                 match state:
                     case '1':
                         state = False
@@ -123,27 +129,25 @@ class BinaryPortClick(BinaryPort):
         """Получает статус кнопки из исходных данных"""
 
         state: str = self._state
-        click = data.get('click')
-        long_press = data.get('m')
+        click = data.get(CLICK)
+        long_press = data.get(MODE)
 
         if click:
             match click:
                 case '1':
-                    state = 'single'
+                    state = STATE_BUTTON.SINGLE
                 case '2':
-                    state = 'double'
+                    state = STATE_BUTTON.DOUBLE
                 case _:
                     state = self.state
         elif long_press:
             match long_press:
                 case '2':
-                    state = 'long'
+                    state = STATE_BUTTON.LONG
                 case _:
                     state = self.state
         else:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'click (id={self.conf.id}): {data}')
-
+            raise UpdateStateError
         return state
 
     def update_state(self, data: str | dict):
@@ -166,17 +170,18 @@ class BinaryPortClick(BinaryPort):
                     self._validate_general_request_data(data)
                     state, count = states
                 match state:
-                    case 'single':
-                        state = 'single'
-                    case 'double':
-                        state = 'double'
-                    case 'long':
-                        state = 'long'
+                    case STATE_BUTTON.SINGLE:
+                        state = STATE_BUTTON.SINGLE
+                    case STATE_BUTTON.DOUBLE:
+                        state = STATE_BUTTON.DOUBLE
+                    case STATE_BUTTON.LONG:
+                        state = STATE_BUTTON.LONG
                     case _:
-                        state = 'off'
+                        state = STATE_BUTTON.OFF
 
             elif isinstance(data, dict):
                 state = self._get_state(data)
+                count = data.get(COUNT)
             else:
                 raise UpdateStateError
 
@@ -228,27 +233,52 @@ class BinaryPortCount(BinaryPort):
 
 
 class ReleyPortOut(BasePort):
-    """
-    http://192.168.113.171:5001/megad?pt=7&mdid=55555&v=0
-    """
+    """Класс для порта настроенного как релейный выход"""
 
     def __init__(self, conf: PortOutRelayConfig):
         super().__init__(conf)
         self.conf: PortOutRelayConfig = conf
         self._state: bool = False
 
-    def update_state(self, raw_data: str | int | bool):
-        """raw data: OFF"""
+    @staticmethod
+    def _validate_general_request_data(data):
+        """Валидация строковых данных общего запроса состояний"""
+
+        if not data.lower() in STATE_RELAY:
+            raise UpdateStateError
+
+    def update_state(self, data: str | dict):
+        """
+        data: OFF
+          {'pt': '9', 'mdid': '44', 'v': '1'}
+          {'pt': '9', 'mdid': '44', 'v': '0'}
+        """
 
         state: bool
 
-        match raw_data:
-            case 'ON' | '1' | 1:
-                state = True
-            case _:
-                state = False
+        try:
+            if isinstance(data, str):
+                self._validate_general_request_data(data)
+                data = data.lower()
+            elif isinstance(data, dict):
+                data = data.get(VALUE).lower()
+            else:
+                raise UpdateStateError
 
-        self._state = not state if self.conf.inverse else state
+            match data:
+                case value if value in RELAY_ON:
+                    state = True
+                case _:
+                    state = False
+
+            self._state = not state if self.conf.inverse else state
+
+        except UpdateStateError:
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'relay (id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
+                          f'data = {data}. Исключение: {e}')
 
 
 class PWMPortOut(BasePort):

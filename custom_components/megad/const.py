@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+
 DOMAIN = 'megad'
 MANUFACTURER = 'ab-log'
 
@@ -19,7 +22,18 @@ MAIN_CONFIG = 1
 ID_CONFIG = 2
 VIRTUAL_PORTS_CONFIG = 5
 
-STATE_BUTTON = ["single", "double", "long", "off"]
+# Параметры запроса MegaD
+VALUE = 'v'
+COUNT = 'cnt'
+MODE = 'm'
+CLICK = 'click'
+
+StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
+STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")
+
+STATE_RELAY = ['on', 'off', '1', '0']
+RELAY_ON = ['1', 'on']
+RELAY_OFF = ['0', 'off']
 
 PLATFORMS = [
     'binary_sensor',
