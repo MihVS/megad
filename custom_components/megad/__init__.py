@@ -95,19 +95,23 @@ class MegaDCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed(f"Ошибка соединения с контроллером id: "
                                    f"{self.megad.config.plc.megad_id}: {err}")
 
+    async def _turn_off_state(self, state_off, delay, port_id, data):
+        """Возвращает выключенное состояние порта"""
+
+        self.megad.update_port(port_id, data)
+        self.async_set_updated_data(self.megad)
+        await asyncio.sleep(delay)
+        self.megad.update_port(port_id, state_off)
+        self.async_set_updated_data(self.megad)
+
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""
 
-        # Надо подумать как обработать порт который возвращает None
         port = self.megad.get_port(port_id)
         if port is None:
             return
         if port.conf.mode == ModeInMegaD.C:
-            self.megad.update_port(port_id, data)
-            self.async_set_updated_data(self.megad)
-            await asyncio.sleep(0.5)
-            self.megad.update_port(port_id, 'off')
-            self.async_set_updated_data(self.megad)
+            await self._turn_off_state('off', 0.5, port_id, data)
         else:
             self.megad.update_port(port_id, data)
             self.async_set_updated_data(self.megad)

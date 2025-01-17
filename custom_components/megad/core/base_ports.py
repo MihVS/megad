@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
 import re
+import logging
+
 
 from .exceptions import UpdateStateError
 from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
                            PortOutPWMConfig,
                            )
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class BasePort(ABC):
@@ -43,17 +48,17 @@ class BinaryPort(BasePort, ABC):
     def count(self):
         return self._count
 
-    def _validate_general_request_data(self, data: str):
+    @staticmethod
+    def _validate_general_request_data(data: str):
         """Валидации правильного формата данных для бинарных портов"""
 
         pattern = r"^[a-zA-Z0-9]+/\d+$"
         if not re.match(pattern, data):
-            raise UpdateStateError(f'Неизвестный формат данных для порта '
-                                   f'BinaryPort (id={self.conf.id}): {data}')
+            raise UpdateStateError
 
 
 class BinaryPortIn(BinaryPort):
-    """Кла настроенный как бинарный сенсор"""
+    """Порт настроенный как бинарный сенсор"""
 
     def __init__(self, conf: PortInConfig):
         super().__init__(conf)
@@ -66,38 +71,45 @@ class BinaryPortIn(BinaryPort):
         data: {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
         """
 
+        state = self._state
         count = self._count
 
-        if isinstance(data, str):
-            states = data.split('/')
-            if len(states) == 1:
-                state = states[0]
+        try:
+            if isinstance(data, str):
+                states = data.split('/')
+                if len(states) == 1:
+                    state = states[0]
+                else:
+                    self._validate_general_request_data(data)
+                    state, count = states
+                state = state.lower()
+                match state:
+                    case 'on' | '1':
+                        state = True
+                    case _:
+                        state = False
+            elif isinstance(data, dict):
+                state = data.get('m')
+                count = data.get('cnt')
+                match state:
+                    case '1':
+                        state = False
+                    case '2':
+                        state = self.state
+                    case _:
+                        state = True
             else:
-                self._validate_general_request_data(data)
-                state, count = states
-            state = state.lower()
-            match state:
-                case 'on' | '1':
-                    state = True
-                case _:
-                    state = False
-        elif isinstance(data, dict):
-            state = data.get('m')
-            count = data.get('cnt')
-            match state:
-                case '1':
-                    state = False
-                case '2':
-                    state = self.state
-                case _:
-                    state = True
-        else:
-            raise UpdateStateError(f'Неизвестный формат данных для порта '
-                                   f'binary sensor (id={self.conf.id}): '
-                                   f'{data}')
+                raise UpdateStateError
 
-        self._state = not state if self.conf.inverse else state
-        self._count = int(count)
+            self._state = not state if self.conf.inverse else state
+            self._count = int(count)
+
+        except UpdateStateError:
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'binary sensor (id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
+                          f'data = {data}. Исключение: {e}')
 
 
 class BinaryPortClick(BinaryPort):
@@ -113,6 +125,7 @@ class BinaryPortClick(BinaryPort):
         state: str = self._state
         click = data.get('click')
         long_press = data.get('m')
+
         if click:
             match click:
                 case '1':
@@ -128,8 +141,8 @@ class BinaryPortClick(BinaryPort):
                 case _:
                     state = self.state
         else:
-            raise UpdateStateError(f'Неизвестный формат данных для порта '
-                                   f'click (id={self.conf.id}): {data}')
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'click (id={self.conf.id}): {data}')
 
         return state
 
@@ -144,31 +157,38 @@ class BinaryPortClick(BinaryPort):
         count = self._count
         state = self._state
 
-        if isinstance(data, str):
-            states = data.split('/')
-            if len(states) == 1:
-                state = states[0].lower()
+        try:
+            if isinstance(data, str):
+                states = data.split('/')
+                if len(states) == 1:
+                    state = states[0].lower()
+                else:
+                    self._validate_general_request_data(data)
+                    state, count = states
+                match state:
+                    case 'single':
+                        state = 'single'
+                    case 'double':
+                        state = 'double'
+                    case 'long':
+                        state = 'long'
+                    case _:
+                        state = 'off'
+
+            elif isinstance(data, dict):
+                state = self._get_state(data)
             else:
-                self._validate_general_request_data(data)
-                state, count = states
-            match state:
-                case 'single':
-                    state = 'single'
-                case 'double':
-                    state = 'double'
-                case 'long':
-                    state = 'long'
-                case _:
-                    state = 'off'
+                raise UpdateStateError
 
-        elif isinstance(data, dict):
-            state = self._get_state(data)
-        else:
-            raise UpdateStateError(f'Неизвестный формат данных для порта '
-                                   f'click (id={self.conf.id}): {data}')
+            self._state = state
+            self._count = int(count)
 
-        self._state = state
-        self._count = int(count)
+        except UpdateStateError:
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'click (id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
+                          f'data = {data}. Исключение: {e}')
 
 
 class BinaryPortCount(BinaryPort):
@@ -186,16 +206,25 @@ class BinaryPortCount(BinaryPort):
               {'pt': '3', 'm': '2', 'cnt': '2', 'mdid': '55555'}
         """
 
-        if isinstance(data, str):
-            self._validate_general_request_data(data)
-            _, count = data.split('/')
-        elif isinstance(data, dict):
-            count = data.get('cnt')
-        else:
-            raise UpdateStateError(f'Неизвестный формат данных для порта '
-                                   f'count (id={self.conf.id}): {data}')
+        count = self._count
 
-        self._count = int(count)
+        try:
+            if isinstance(data, str):
+                self._validate_general_request_data(data)
+                _, count = data.split('/')
+            elif isinstance(data, dict):
+                count = data.get('cnt')
+            else:
+                raise UpdateStateError
+
+            self._count = int(count)
+
+        except UpdateStateError:
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'count (id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
+                          f'data = {data}. Исключение: {e}')
 
 
 class ReleyPortOut(BasePort):
