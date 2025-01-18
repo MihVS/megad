@@ -105,6 +105,12 @@ class MegaD:
             ):
                 relay = ReleyPortOut(port)
                 self.ports.append(relay)
+            elif (
+                    port.type_port == TypePortMegaD.OUT
+                    and (port.mode in (ModeOutMegaD.PWM, ModeOutMegaD.SW_LINK))
+            ):
+                relay = ReleyPortOut(port)
+                self.ports.append(relay)
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 
