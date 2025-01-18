@@ -10,7 +10,7 @@ from .config_parser import (
     get_version_software
 )
 from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD
-from .models_megad import DeviceMegaD
+from .models_megad import DeviceMegaD, PortOutRelayConfig
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from ..const import MAIN_CONFIG, START_CONFIG
@@ -126,17 +126,31 @@ class MegaD:
             None
         )
 
+    # def _check_command(self, port_id, command) -> str:
+    #     """
+    #     Преобразование команды переключения состояния порта
+    #     для изменения его состояния в НА
+    #     """
+    #     port = self.get_port(port_id)
+    #     if command == '2':
+    #         state_old = port.state
+    #         return '0' if state_old else '1'
+    #     return command
+
     async def set_port(self, port_id, command):
         """Управление выходом релейным и шим"""
 
         params = {'cmd': f'{port_id}:{command}'}
         response = await self.session.get(url=self.url, params=params)
+
         text = await response.text()
         match text:
             case 'busy':
                 _LOGGER.warning(f'Не удалось изменить состояние порта '
                                 f'№{port_id}. Команда: {command}')
             case _:
+                # command = self._check_command(port_id, command)
+                # self.get_port(port_id).update_state(command)
                 _LOGGER.debug(f'Порт №{port_id} изменил состояние '
                               f'на {command}')
 

@@ -271,7 +271,7 @@ class ReleyPortOut(BasePort):
                 case _:
                     state = False
 
-            self._state = not state if self.conf.inverse else state
+            self._state = state
 
         except UpdateStateError:
             _LOGGER.warning(f'Получен неизвестный формат данных для порта '

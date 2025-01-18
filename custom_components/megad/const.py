@@ -6,9 +6,9 @@ MANUFACTURER = 'ab-log'
 
 # Таймауты
 TIME_UPDATE = 60
-TIME_OUT_UPDATE_DATA = 10
+TIME_OUT_UPDATE_DATA = 5
 
-COUNTER_CONNECT = 5
+COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = './config/custom_components/megad/config_megad/'
 
@@ -41,4 +41,5 @@ RELAY_OFF = ['0', 'off']
 PLATFORMS = [
     'binary_sensor',
     'sensor',
+    'switch'
 ]

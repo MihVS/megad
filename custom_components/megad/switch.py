@@ -1,18 +1,19 @@
 import logging
 
+import async_timeout
 from propcache import cached_property
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass, BinarySensorEntity
+    BinarySensorEntity
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN, PORT_COMMAND
+from .const import DOMAIN, PORT_COMMAND, TIME_OUT_UPDATE_DATA
 from .core.base_ports import ReleyPortOut
-from .core.enums import DeviceClassBinary, DeviceClassControl
+from .core.enums import DeviceClassControl
 from .core.megad import MegaD
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,12 +75,43 @@ class SwitchMegaD(CoordinatorEntity, BinarySensorEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
-        await self._megad.set_port(self._port.conf.id, PORT_COMMAND.ON)
+        try:
+            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+                await self._megad.set_port(
+                    self._port.conf.id, PORT_COMMAND.ON
+                )
+            self._port.update_state('on')
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.warning(f'Ошибка управления портом '
+                            f'{self._port.conf.id}: {e}')
 
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        await self._megad.set_port(self._port.conf.id, PORT_COMMAND.OFF)
+        try:
+            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+                await self._megad.set_port(
+                    self._port.conf.id, PORT_COMMAND.OFF
+                )
+            self._port.update_state('off')
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.warning(f'Ошибка управления портом '
+                            f'{self._port.conf.id}: {e}')
 
     async def async_toggle(self, **kwargs):
         """Toggle the entity."""
-        await self._megad.set_port(self._port.conf.id, PORT_COMMAND.TOGGLE)
+        try:
+            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+                await self._megad.set_port(
+                    self._port.conf.id, PORT_COMMAND.TOGGLE
+                )
+            if self._port.state:
+                self._port.update_state('off')
+            else:
+                self._port.update_state('on')
+            self.async_write_ha_state()
+
+        except Exception as e:
+            _LOGGER.warning(f'Ошибка управления портом '
+                            f'{self._port.conf.id}: {e}')
