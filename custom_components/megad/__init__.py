@@ -115,3 +115,10 @@ class MegaDCoordinator(DataUpdateCoordinator):
         else:
             self.megad.update_port(port_id, data)
             self.async_set_updated_data(self.megad)
+
+    def update_group_state(self, port_states: dict[int, str]):
+        """Обновление состояний портов в группе"""
+
+        for port_id, state in port_states.items():
+            self.megad.update_port(port_id, state)
+        self.async_set_updated_data(self.megad)

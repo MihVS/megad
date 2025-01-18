@@ -1,6 +1,10 @@
 import logging
 from typing import Union
 
+import async_timeout
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort
@@ -11,10 +15,8 @@ from .config_parser import (
 )
 from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD
 from .exceptions import PortBusy
-from .models_megad import DeviceMegaD, PortOutRelayConfig
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from ..const import MAIN_CONFIG, START_CONFIG
+from .models_megad import DeviceMegaD
+from ..const import MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -137,17 +139,19 @@ class MegaD:
         """Управление выходом релейным и шим"""
 
         params = {'cmd': f'{port_id}:{command}'}
-        response = await self.session.get(url=self.url, params=params)
+        async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+            response = await self.session.get(url=self.url, params=params)
 
         text = await response.text()
         match text:
             case 'busy':
-                _LOGGER.warning(f'Не удалось изменить состояние порта '
-                                f'№{port_id}. Команда: {command}')
+                _LOGGER.warning(f'Не удалось изменить состояние порта или '
+                                f'группы портов №{port_id}. '
+                                f'Команда: {command}')
                 raise PortBusy
             case _:
-                _LOGGER.debug(f'Порт №{port_id} изменил состояние '
-                              f'на {command}')
+                _LOGGER.debug(f'Порт (группа портов) №{port_id} изменил(а)'
+                              f' состояние на {command}')
 
     def _check_change_port(
             self, port: BasePort, old_state: str, new_state: str) -> bool:
