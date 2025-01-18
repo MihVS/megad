@@ -6,6 +6,11 @@ class UpdateStateError(Exception):
     pass
 
 
+class PortBusy(Exception):
+    """Контроллер не успел выполнить команду"""
+    pass
+
+
 class InvalidIpAddress(Exception):
     """Ошибка валидации ip адреса"""
     pass
