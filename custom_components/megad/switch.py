@@ -120,6 +120,24 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
             _LOGGER.warning(f'Ошибка управления группой портов '
                             f'{self._group}: {e}')
 
+    # def _check_inverse(self, port_id, command) -> PORT_COMMAND:
+    #     """Проверяет необходимость инверсии и возвращает правильную команду"""
+    #     port = self._megad.get_port(port_id)
+    #     if command == PORT_COMMAND.ON:
+    #         return (
+    #             PORT_COMMAND.OFF
+    #             if port.conf.inverse else
+    #             PORT_COMMAND.ON
+    #         )
+    #     elif command == PORT_COMMAND.OFF:
+    #         return (
+    #             PORT_COMMAND.ON
+    #             if port.conf.inverse else
+    #             PORT_COMMAND.OFF
+    #         )
+    #     else:
+    #         return command
+
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
         await self._switch_group(PORT_COMMAND.ON)

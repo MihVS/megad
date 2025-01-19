@@ -42,24 +42,44 @@ class PortOutEntity(CoordinatorEntity):
     async def _switch_port(self, command):
         """Переключение состояния порта"""
         try:
-            await self._megad.set_port(self._port.conf.id, command)
+            await self._megad.set_port(
+                self._port.conf.id, self._check_inverse(command)
+            )
             if command == PORT_COMMAND.TOGGLE:
                 if self._port.state:
                     await self._coordinator.update_port_state(
-                        self._port.conf.id, PORT_COMMAND.OFF
+                        self._port.conf.id,
+                        self._check_inverse(PORT_COMMAND.OFF)
                     )
                 else:
                     await self._coordinator.update_port_state(
-                        self._port.conf.id, PORT_COMMAND.ON
+                        self._port.conf.id,
+                        self._check_inverse(PORT_COMMAND.ON)
                     )
             else:
-                await self._megad.set_port(self._port.conf.id, command)
                 await self._coordinator.update_port_state(
-                    self._port.conf.id, command
+                    self._port.conf.id, self._check_inverse(command)
                 )
         except Exception as e:
             _LOGGER.warning(f'Ошибка управления портом '
                             f'{self._port.conf.id}: {e}')
+
+    def _check_inverse(self, command) -> PORT_COMMAND:
+        """Проверяет необходимость инверсии и возвращает правильную команду"""
+        if command == PORT_COMMAND.ON:
+            return (
+                PORT_COMMAND.OFF
+                if self._port.conf.inverse else
+                PORT_COMMAND.ON
+            )
+        elif command == PORT_COMMAND.OFF:
+            return (
+                PORT_COMMAND.ON
+                if self._port.conf.inverse else
+                PORT_COMMAND.OFF
+            )
+        else:
+            return command
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""

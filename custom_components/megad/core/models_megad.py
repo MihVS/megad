@@ -191,7 +191,7 @@ class PortOutConfig(DeviceClassConfig):
         return ModeOutMegaD.get_value(value)
 
 
-class PortOutRelayConfig(PortOutConfig):
+class PortOutRelayConfig(PortOutConfig, InverseValueMixin):
     """Релейный выход"""
 
     device_class: DeviceClassControl = DeviceClassControl.SWITCH
