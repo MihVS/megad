@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, Any
 
 from propcache import cached_property
 
@@ -39,7 +40,7 @@ async def async_setup_entry(
         _LOGGER.debug(f'Добавлена вентиляция: {fans}')
 
 
-class FanMegaD(FanEntity, PortOutEntity):
+class FanMegaD(PortOutEntity, FanEntity):
 
     _attr_supported_features = (FanEntityFeature.TURN_ON
                                 | FanEntityFeature.TURN_OFF)
@@ -56,21 +57,27 @@ class FanMegaD(FanEntity, PortOutEntity):
             return f"<Fan entity {self.entity_id}>"
         return super().__repr__()
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        return self._port.state
+    async def async_turn_on(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Turn the entity on."""
+        await self._switch_port(PORT_COMMAND.ON)
 
-    # async def async_turn_on(self, **kwargs):
-    #     """Turn the entity on."""
-    #     await super().async_turn_off(**kwargs)
-    #     await self._switch_port(PORT_COMMAND.ON)
-    #
-    # async def async_turn_off(self, **kwargs):
-    #     """Turn the entity off."""
-    #     await super().async_turn_off(**kwargs)
-    #     await self._switch_port(PORT_COMMAND.OFF)
+    async def async_turn_off(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Turn the entity off."""
+        await super().async_turn_off(**kwargs)
+        await self._switch_port(PORT_COMMAND.OFF)
 
-    # async def async_toggle(self, **kwargs):
-    #     """Toggle the entity."""
-    #     await self._switch_port(PORT_COMMAND.TOGGLE)
+    async def async_toggle(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Toggle the entity."""
+        await self._switch_port(PORT_COMMAND.TOGGLE)
