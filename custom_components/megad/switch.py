@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND
 from .core.base_ports import ReleyPortOut, PWMPortOut
+from .core.entties import PortOutEntity
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
 
@@ -49,72 +50,19 @@ async def async_setup_entry(
         _LOGGER.debug(f'Добавлены переключатели: {switches}')
 
 
-class SwitchMegaD(CoordinatorEntity, SwitchEntity):
+class SwitchMegaD(PortOutEntity, SwitchEntity):
 
     def __init__(
             self, coordinator: MegaDCoordinator, port: ReleyPortOut,
             unique_id: str
     ) -> None:
-        super().__init__(coordinator)
-        self._coordinator: MegaDCoordinator = coordinator
-        self._megad: MegaD = coordinator.megad
-        self._port: ReleyPortOut = port
-        self._switch_name: str = port.conf.name
-        self._unique_id: str = unique_id
-        self._attr_device_info = coordinator.devices_info()
+        super().__init__(coordinator, port, unique_id)
         self.entity_id = f'switch.{self._megad.id}_port{port.conf.id}'
 
     def __repr__(self) -> str:
         if not self.hass:
             return f"<Switch entity {self.entity_id}>"
         return super().__repr__()
-
-    @cached_property
-    def name(self) -> str:
-        return self._switch_name
-
-    @cached_property
-    def unique_id(self) -> str:
-        return self._unique_id
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        return self._port.state
-
-    async def _switch_port(self, command):
-        """Переключение состояния порта"""
-        try:
-            await self._megad.set_port(self._port.conf.id, command)
-            if command == PORT_COMMAND.TOGGLE:
-                if self._port.state:
-                    await self._coordinator.update_port_state(
-                        self._port.conf.id, PORT_COMMAND.OFF
-                    )
-                else:
-                    await self._coordinator.update_port_state(
-                        self._port.conf.id, PORT_COMMAND.ON
-                    )
-            else:
-                await self._megad.set_port(self._port.conf.id, command)
-                await self._coordinator.update_port_state(
-                    self._port.conf.id, command
-                )
-        except Exception as e:
-            _LOGGER.warning(f'Ошибка управления портом '
-                            f'{self._port.conf.id}: {e}')
-
-    async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
-        await self._switch_port(PORT_COMMAND.ON)
-
-    async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
-        await self._switch_port(PORT_COMMAND.OFF)
-
-    async def async_toggle(self, **kwargs):
-        """Toggle the entity."""
-        await self._switch_port(PORT_COMMAND.TOGGLE)
 
 
 class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):

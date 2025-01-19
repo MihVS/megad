@@ -41,5 +41,7 @@ RELAY_OFF = ['0', 'off']
 PLATFORMS = [
     'binary_sensor',
     'sensor',
-    'switch'
+    'switch',
+    'light',
+    'fan',
 ]
