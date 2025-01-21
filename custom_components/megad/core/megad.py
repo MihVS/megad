@@ -150,8 +150,9 @@ class MegaD:
                                 f'Команда: {command}')
                 raise PortBusy
             case _:
-                _LOGGER.debug(f'Порт (группа портов) №{port_id} изменил(а)'
-                              f' состояние на {command}')
+                if 'g' in str(port_id):
+                    _LOGGER.debug(f'Группа портов №{port_id} изменила'
+                                  f' состояние на {command}')
 
     def _check_change_port(
             self, port: BasePort, old_state: str, new_state: str) -> bool:

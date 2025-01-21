@@ -217,6 +217,7 @@ class PortOutPWMConfig(PortOutConfig):
     smooth_long: int = Field(alias='m2', default=0, ge=0, le=255)
     default_value: int = Field(alias='d', default=0, ge=0, le=255)
     min_value: int = Field(alias='pwmm', default=0, ge=0, le=255)
+    inverse: bool = False
 
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):

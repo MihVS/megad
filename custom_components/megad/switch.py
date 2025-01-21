@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND
-from .core.base_ports import ReleyPortOut, PWMPortOut
+from .core.base_ports import ReleyPortOut, PWMPortOut, BasePort
 from .core.entties import PortOutEntity
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
@@ -93,12 +93,15 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
     def unique_id(self) -> str:
         return self._unique_id
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        return  all(
-            self._megad.get_port(port_id).state for port_id in self._ports
-        )
+    @staticmethod
+    def _check_command(port: BasePort, command: PORT_COMMAND) -> str:
+        """
+        Проверка порта на возможность диммирования и корректировка команды.
+        """
+        if isinstance(port, PWMPortOut):
+            return '255' if command == PORT_COMMAND.ON else command
+        else:
+            return command
 
     async def _switch_group(self, command):
         """Переключение состояния группы выходов"""
@@ -109,34 +112,26 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
                 for port_id in self._ports:
                     port = self._megad.get_port(port_id)
                     if port.state:
-                        port_states[port_id] = PORT_COMMAND.OFF
+                        port_states[port_id] = (
+                            PORT_COMMAND.ON
+                            if port.conf.inverse else
+                            PORT_COMMAND.OFF
+                        )
                     else:
-                        port_states[port_id] = PORT_COMMAND.ON
+                        port_states[port_id] = (
+                            PORT_COMMAND.OFF
+                            if port.conf.inverse else
+                            self._check_command(port, PORT_COMMAND.ON)
+                        )
             else:
                 for port_id in self._ports:
-                    port_states[port_id] = command
+                    port_states[port_id] = self._check_command(
+                        self._megad.get_port(port_id), command
+                    )
             self._coordinator.update_group_state(port_states)
         except Exception as e:
             _LOGGER.warning(f'Ошибка управления группой портов '
                             f'{self._group}: {e}')
-
-    # def _check_inverse(self, port_id, command) -> PORT_COMMAND:
-    #     """Проверяет необходимость инверсии и возвращает правильную команду"""
-    #     port = self._megad.get_port(port_id)
-    #     if command == PORT_COMMAND.ON:
-    #         return (
-    #             PORT_COMMAND.OFF
-    #             if port.conf.inverse else
-    #             PORT_COMMAND.ON
-    #         )
-    #     elif command == PORT_COMMAND.OFF:
-    #         return (
-    #             PORT_COMMAND.ON
-    #             if port.conf.inverse else
-    #             PORT_COMMAND.OFF
-    #         )
-    #     else:
-    #         return command
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""

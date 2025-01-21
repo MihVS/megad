@@ -57,7 +57,6 @@ class BinaryPort(BasePort, ABC):
     @staticmethod
     def _validate_general_request_data(data: str):
         """Валидации правильного формата данных для бинарных портов"""
-
         pattern = r"^[a-zA-Z0-9]+/\d+$"
         if not re.match(pattern, data):
             raise UpdateStateError
@@ -76,7 +75,6 @@ class BinaryPortIn(BinaryPort):
         data: OFF/7
         data: {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
         """
-
         state = self._state
         count = self._count
 
@@ -127,7 +125,6 @@ class BinaryPortClick(BinaryPort):
 
     def _get_state(self, data: dict) -> str:
         """Получает статус кнопки из исходных данных"""
-
         state: str = self._state
         click = data.get(CLICK)
         long_press = data.get(MODE)
@@ -157,7 +154,6 @@ class BinaryPortClick(BinaryPort):
               {'pt': '1', 'click': '1', 'cnt': '6', 'mdid': '55555'}
               {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
         """
-
         count = self._count
         state = self._state
 
@@ -210,7 +206,6 @@ class BinaryPortCount(BinaryPort):
               {'pt': '3', 'cnt': '2', 'mdid': '55555'}
               {'pt': '3', 'm': '2', 'cnt': '2', 'mdid': '55555'}
         """
-
         count = self._count
 
         try:
@@ -253,7 +248,6 @@ class ReleyPortOut(BasePort):
           {'pt': '9', 'mdid': '44', 'v': '1'}
           {'pt': '9', 'mdid': '44', 'v': '0'}
         """
-
         state: bool
 
         try:
@@ -282,16 +276,36 @@ class ReleyPortOut(BasePort):
 
 
 class PWMPortOut(BasePort):
-    """
-    http://192.168.113.171:5001/megad?pt=12&mdid=55555&v=250
-    """
+    """Клас для портов с ШИМ регулированием"""
 
     def __init__(self, conf: PortOutPWMConfig):
         super().__init__(conf)
         self.conf: PortOutPWMConfig = conf
         self._state: int = 0
 
-    def update_state(self, raw_data: str | int):
-        """raw data: 100"""
+    def update_state(self, data: str):
+        """
+        data: 100
+              {'pt': '12', 'mdid': '44', 'v': '250'}
+        """
+        try:
+            if isinstance(data, str):
+                value = int(data)
+            elif isinstance(data, int):
+                value = data
+            elif isinstance(data, dict):
+                value = int(data.get(VALUE))
+            else:
+                raise UpdateStateError
 
-        self._state = int(raw_data)
+            self._state = value
+
+        except ValueError:
+            _LOGGER.warning(f'Для ШИМ порта нельзя устанавливать буквенное '
+                            f'значение. Порт {self.conf.id}, значение: {data}')
+        except UpdateStateError:
+            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
+                            f'relay (id={self.conf.id}), data = {data}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
+                          f'data = {data}. Исключение: {e}')
