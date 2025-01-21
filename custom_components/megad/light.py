@@ -98,6 +98,17 @@ class LightPWMMegaD(CoordinatorEntity, LightEntity):
                 (self.max_brightness - self.min_brightness)) * 255
             return int(value)
 
+    def ha_to_device_brightness(self, ha_value) -> int:
+        if ha_value == 0:
+            return 0
+        elif ha_value == 1:
+            return self.min_brightness
+        else:
+            value = ha_value / self.max_brightness * (
+                    self.max_brightness - self.min_brightness
+            ) + self.min_brightness
+            return int(value)
+
     async def set_value_port(self, value):
         """Установка значения порта"""
         try:
@@ -126,17 +137,6 @@ class LightPWMMegaD(CoordinatorEntity, LightEntity):
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
         return bool(self.device_to_ha_brightness(self._port.state))
-
-    def ha_to_device_brightness(self, ha_value) -> int:
-        if ha_value == 0:
-            return 0
-        elif ha_value == 1:
-            return self.min_brightness
-        else:
-            value = ha_value / self.max_brightness * (
-                    self.max_brightness - self.min_brightness
-            ) + self.min_brightness
-            return int(value)
 
     async def async_turn_on(self, brightness: int = 255, **kwargs):
         """Turn the entity on."""
