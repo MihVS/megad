@@ -26,19 +26,20 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Регистрируем HTTP ручку"""
-
     hass.http.register_view(MegadHttpView())
     return True
 
 
 async def async_setup_entry(
         hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(update_listener)
+    )
     entry_id = config_entry.entry_id
     _LOGGER.debug(f'Entry_id {entry_id}')
     file_path = config_entry.data.get('file_path')
     megad_config = await create_config_megad(file_path)
     megad = MegaD(hass=hass, config=megad_config)
-    _LOGGER.debug(megad)
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
@@ -47,6 +48,11 @@ async def async_setup_entry(
         config_entry, PLATFORMS
     )
     return True
+
+
+async def update_listener(hass, entry):
+    """Вызывается при изменении настроек интеграции."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class MegaDCoordinator(DataUpdateCoordinator):
@@ -76,7 +82,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Обновление всех данных megad"""
-
         try:
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
                 await self.megad.update_data()
@@ -97,7 +102,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     async def _turn_off_state(self, state_off, delay, port_id, data):
         """Возвращает выключенное состояние порта"""
-
         self.megad.update_port(port_id, data)
         self.async_set_updated_data(self.megad)
         await asyncio.sleep(delay)
@@ -106,7 +110,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""
-
         port = self.megad.get_port(port_id)
         if port is None:
             return
@@ -122,3 +125,23 @@ class MegaDCoordinator(DataUpdateCoordinator):
         for port_id, state in port_states.items():
             self.megad.update_port(port_id, state)
         self.async_set_updated_data(self.megad)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    _LOGGER.info(f'Выгрузка интеграции: {entry.entry_id}')
+    _LOGGER.info(f'data: {entry.data}')
+    _LOGGER.info(f'options: {entry.options}')
+    try:
+        unload_ok = await hass.config_entries.async_unload_platforms(
+            entry, PLATFORMS
+        )
+        _LOGGER.debug(f'data: {entry.data}')
+        _LOGGER.info(f'before: {hass.data[DOMAIN]}')
+        hass.data[DOMAIN].pop(entry.entry_id)
+        _LOGGER.info(f'after: {hass.data[DOMAIN]}')
+
+        return unload_ok
+    except Exception as e:
+        _LOGGER.error(f'Ошибка при выгрузке: {e}')
+        return False

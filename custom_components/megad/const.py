@@ -12,6 +12,10 @@ COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = './config/custom_components/megad/config_megad/'
 
+# Значения по умолчанию
+DEFAULT_IP = '192.168.0.14'
+DEFAULT_PASSWORD = 'sec'
+
 # Поля в интерфейсе MegaD
 TITLE_MEGAD = 'emt'
 NAME_SCRIPT_MEGAD = 'sct'

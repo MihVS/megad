@@ -2,6 +2,7 @@ import logging
 from typing import Union
 
 import async_timeout
+from http import HTTPStatus
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -14,7 +15,7 @@ from .config_parser import (
     get_version_software
 )
 from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD
-from .exceptions import PortBusy
+from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
 from ..const import MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA
 
@@ -53,8 +54,12 @@ class MegaD:
         """Запрос состояния всех портов"""
         params = {'cmd': 'all'}
         response = await self.session.get(url=self.url, params=params)
+        if response.status == HTTPStatus.UNAUTHORIZED:
+            _LOGGER.error(f'Неверный пароль для устройства с id {self.id}')
+            raise InvalidPasswordMegad(f'Проверьте пароль у устройства '
+                                       f'с id {self.id}')
         text = await response.text()
-        _LOGGER.debug(f'Состояние всех портов: {text}')
+        _LOGGER.debug(f'Состояние всех портов id:{self.id}: {text}')
         return text
 
     async def update_data(self):

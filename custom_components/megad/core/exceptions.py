@@ -16,6 +16,11 @@ class InvalidIpAddress(Exception):
     pass
 
 
+class InvalidIpAddressExist(Exception):
+    """Ip адрес уже добавлен в НА"""
+    pass
+
+
 class InvalidPassword(Exception):
     """Пароль слишком длинный"""
     pass
@@ -33,4 +38,9 @@ class InvalidAuthorized(Exception):
 
 class InvalidSlug(Exception):
     """Неправильный slug указан в поле script контроллера."""
+    pass
+
+
+class InvalidPasswordMegad(HomeAssistantError):
+    """Неверный пароль для контроллера"""
     pass
