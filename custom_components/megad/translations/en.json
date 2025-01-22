@@ -2,45 +2,107 @@
   "title": "MegaD",
   "config": {
     "error": {
-      "invalid_ip": "Invalid IP address format",
-      "invalid_password": "Password must be longer than 3 characters",
-      "unknown": "Unknown error"
+      "invalid_ip": "Invalid IP address format.",
+      "ip_exist": "IP address is already in use in the integration.",
+      "invalid_password": "Password must be longer than 3 characters.",
+      "unauthorized": "Incorrect password.",
+      "megad_not_available": "Controller is unavailable. Check the IP address.",
+      "read_config_error": "Error reading the controller configuration.",
+      "validate_config": "Validation error. Check the configuration file parameters.",
+      "validate_slug": "The Script field in the controller configuration must be set to 'megad'. Change the device settings and update the configuration file.",
+      "unknown": "Unknown error."
     },
     "step": {
       "user": {
-        "title": "MegaD Controller Configuration",
-        "description": "Enter the connection parameters",
+        "title": "MegaD Controller Configuration.",
+        "description": "Enter the connection parameters.",
         "data": {
-          "ip": "Controller IP address",
-          "password": "Controller password"
+          "ip": "Controller IP address:",
+          "password": "Controller password:"
         }
       },
       "get_config": {
-        "title": "Configuration",
-        "description": "Select the desired action",
+        "title": "Configuration.",
+        "description": "Select the desired action.",
         "data": {
-          "config_menu": "Actions"
+          "config_menu": "Actions:"
         }
       },
       "read_config": {
-        "title": "Read Configuration from MegaD",
-        "description": "Enter the file name",
+        "title": "Reading configuration from MegaD.",
+        "description": "Enter the file name.",
         "data": {
-          "name_file": "File name"
+          "name_file": "File name:",
+          "return_main_menu": "Return to the main menu without applying settings"
         }
       },
       "select_config": {
-        "title": "Configuration File",
-        "description": "Select a configuration file to add MegaD to Home Assistant",
+        "title": "Configuration file.",
+        "description": "Select a configuration file to add MegaD to Home Assistant.",
         "data": {
-          "config_list": "Saved configuration files"
+          "config_list": "Saved configuration files:",
+          "return_main_menu": "Return to the main menu without applying settings"
         }
       },
       "write_config": {
-        "title": "Write Configuration to MegaD",
-        "description": "Select a configuration file to write to the controller",
+        "title": "Writing configuration to MegaD.",
+        "description": "Select a configuration file to write to the controller.",
         "data": {
-          "config_list": "Saved configuration files"
+          "config_list": "Saved configuration files:",
+          "return_main_menu": "Return to the main menu without applying settings"
+        }
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "invalid_ip": "Invalid IP address format.",
+      "invalid_password": "Password must be longer than 3 characters.",
+      "unauthorized": "Incorrect password.",
+      "megad_not_available": "Controller is unavailable. Check the IP address.",
+      "read_config_error": "Error reading the controller configuration.",
+      "validate_config": "Validation error. Check the configuration file parameters.",
+      "validate_slug": "The Script field in the controller configuration must be set to 'megad'. Change the device settings and update the configuration file.",
+      "unknown": "Unknown error."
+    },
+    "step": {
+      "init": {
+        "title": "Controller configuration update.",
+        "description": "Connection parameters in use.",
+        "data": {
+          "ip": "Controller IP address:",
+          "password": "Controller password:"
+        }
+      },
+      "get_config": {
+        "title": "Configuration.",
+        "description": "Select the desired action.",
+        "data": {
+          "config_menu": "Actions:"
+        }
+      },
+      "read_config": {
+        "title": "Reading configuration from MegaD.",
+        "description": "Enter the file name.",
+        "data": {
+          "name_file": "File name:",
+          "return_main_menu": "Return to the main menu without applying settings"
+        }
+      },
+      "select_config": {
+        "title": "Configuration file.",
+        "description": "Select a configuration file to update data in Home Assistant.",
+        "data": {
+          "config_list": "Saved configuration files:",
+          "return_main_menu": "Return to the main menu without applying settings"
+        }
+      },
+      "write_config": {
+        "title": "Writing configuration to MegaD.",
+        "description": "Select a configuration file to write to the controller.",
+        "data": {
+          "config_list": "Saved configuration files:",
+          "return_main_menu": "Return to the main menu without applying settings"
         }
       }
     }

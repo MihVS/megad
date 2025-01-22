@@ -131,15 +131,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     _LOGGER.info(f'Выгрузка интеграции: {entry.entry_id}')
     _LOGGER.info(f'data: {entry.data}')
-    _LOGGER.info(f'options: {entry.options}')
     try:
         unload_ok = await hass.config_entries.async_unload_platforms(
             entry, PLATFORMS
         )
-        _LOGGER.debug(f'data: {entry.data}')
-        _LOGGER.info(f'before: {hass.data[DOMAIN]}')
         hass.data[DOMAIN].pop(entry.entry_id)
-        _LOGGER.info(f'after: {hass.data[DOMAIN]}')
 
         return unload_ok
     except Exception as e:
