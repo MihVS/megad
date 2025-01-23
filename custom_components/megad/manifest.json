@@ -1,6 +1,6 @@
 {
   "domain": "megad",
-  "name": "MegaD",
+  "name": "MegaD-2561",
   "documentation": "https://github.com/mihvs/megad",
   "issue_tracker": "https://github.com/mihvs/megad/issues",
   "codeowners": ["@mihvs"],
