@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from .exceptions import UpdateStateError
 from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
-                           PortOutPWMConfig,
+                           PortOutPWMConfig, OneWireSensorConfig,
                            )
 from ..const import (STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK,
                      STATE_BUTTON
@@ -309,3 +309,13 @@ class PWMPortOut(BasePort):
         except Exception as e:
             _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
                           f'data = {data}. Исключение: {e}')
+
+
+class DSensorPortOneWire(BasePort):
+    """Клас для портов 1 wire сенсоров"""
+
+    def __init__(self, conf: OneWireSensorConfig):
+        super().__init__(conf)
+        self.conf: OneWireSensorConfig = conf
+        self._state: dict = {}
+
