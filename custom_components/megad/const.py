@@ -20,6 +20,13 @@ DEFAULT_PASSWORD = 'sec'
 TITLE_MEGAD = 'emt'
 NAME_SCRIPT_MEGAD = 'sct'
 
+# Обозначения категорий статусов сенсоров в MegaD
+TEMPERATURE = 'temp'
+HUMIDITY = 'hum'
+CO2 = 'CO2'
+
+PLC_BUSY = 'busy'
+
 # Номера страниц конфигураций для запроса
 START_CONFIG = 0
 MAIN_CONFIG = 1

@@ -2,12 +2,14 @@ import logging
 import re
 from abc import ABC, abstractmethod
 
-from .exceptions import UpdateStateError
+from homeassistant.const import STATE_UNAVAILABLE
+from .exceptions import UpdateStateError, TypeSensorError, PortBusy
 from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
                            PortOutPWMConfig, OneWireSensorConfig,
+                           PortSensorConfig, DHTSensorConfig,
                            )
 from ..const import (STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK,
-                     STATE_BUTTON
+                     STATE_BUTTON, TEMPERATURE, PLC_BUSY, HUMIDITY
                      )
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,7 +17,8 @@ _LOGGER = logging.getLogger(__name__)
 
 class BasePort(ABC):
     """Абстрактный класс для всех портов."""
-    def __init__(self, conf):
+    def __init__(self, conf, megad_id):
+        self.megad_id = megad_id
         self.conf: PortConfig = conf
         self._state: str = ''
 
@@ -32,23 +35,24 @@ class BasePort(ABC):
         pass
 
     def __repr__(self):
-        return (f"<Port(id={self.conf.id}, type={self.conf.type_port}, "
-                f"state={self._state}), name={self.conf.name})>")
+        return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
+                f'type={self.conf.type_port}, state={self._state}), '
+                f'name={self.conf.name})>')
 
 
 class BinaryPort(BasePort, ABC):
     """Базовый бинарный порт"""
 
-    def __init__(self, conf: PortInConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortInConfig, megad_id):
+        super().__init__(conf, megad_id)
         self.conf: PortInConfig = conf
         self._state: bool = False
         self._count: int = 0
 
     def __repr__(self):
-        return (f"<Port(id={self.conf.id}, type={self.conf.type_port}, "
-                f"state={self._state}), name={self.conf.name}, "
-                f"count={self._count})>")
+        return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
+                f'type={self.conf.type_port}, state={self._state}), '
+                f'name={self.conf.name}, count={self._count})>')
 
     @property
     def count(self):
@@ -65,8 +69,8 @@ class BinaryPort(BasePort, ABC):
 class BinaryPortIn(BinaryPort):
     """Порт настроенный как бинарный сенсор"""
 
-    def __init__(self, conf: PortInConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortInConfig, megad_id):
+        super().__init__(conf, megad_id)
         self._state: bool = False
 
     def update_state(self, data: str | dict):
@@ -109,18 +113,20 @@ class BinaryPortIn(BinaryPort):
             self._count = int(count)
 
         except UpdateStateError:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'binary sensor (id={self.conf.id}): {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта binary sensor '
+                            f'(id={self.conf.id}): {data}')
         except Exception as e:
-            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
-                          f'data = {data}. Исключение: {e}')
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
 
 
 class BinaryPortClick(BinaryPort):
     """Класс для порта настроенного как нажатие."""
 
-    def __init__(self, conf: PortInConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortInConfig, megad_id):
+        super().__init__(conf, megad_id)
         self._state: str = 'off'
 
     def _get_state(self, data: dict) -> str:
@@ -185,18 +191,20 @@ class BinaryPortClick(BinaryPort):
             self._count = int(count)
 
         except UpdateStateError:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'click (id={self.conf.id}): {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта click '
+                            f'(id={self.conf.id}): {data}')
         except Exception as e:
-            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
-                          f'data = {data}. Исключение: {e}')
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
 
 
 class BinaryPortCount(BinaryPort):
     """Класс настроенный как бинарный сенсор для счетчиков"""
 
-    def __init__(self, conf: PortInConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortInConfig, megad_id):
+        super().__init__(conf, megad_id)
         self._state = None
 
     def update_state(self, data: str | dict):
@@ -220,18 +228,20 @@ class BinaryPortCount(BinaryPort):
             self._count = int(count)
 
         except UpdateStateError:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'count (id={self.conf.id}): {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта count '
+                            f'(id={self.conf.id}): {data}')
         except Exception as e:
-            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
-                          f'data = {data}. Исключение: {e}')
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
 
 
 class ReleyPortOut(BasePort):
     """Класс для порта настроенного как релейный выход"""
 
-    def __init__(self, conf: PortOutRelayConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortOutRelayConfig, megad_id):
+        super().__init__(conf, megad_id)
         self.conf: PortOutRelayConfig = conf
         self._state: bool = False
 
@@ -268,18 +278,20 @@ class ReleyPortOut(BasePort):
             self._state = not state if self.conf.inverse else state
 
         except UpdateStateError:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'relay (id={self.conf.id}): {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта relay '
+                            f'(id={self.conf.id}): {data}')
         except Exception as e:
-            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
-                          f'data = {data}. Исключение: {e}')
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
 
 
 class PWMPortOut(BasePort):
     """Клас для портов с ШИМ регулированием"""
 
-    def __init__(self, conf: PortOutPWMConfig):
-        super().__init__(conf)
+    def __init__(self, conf: PortOutPWMConfig, megad_id):
+        super().__init__(conf, megad_id)
         self.conf: PortOutPWMConfig = conf
         self._state: int = 0
 
@@ -301,21 +313,111 @@ class PWMPortOut(BasePort):
             self._state = value
 
         except ValueError:
-            _LOGGER.warning(f'Для ШИМ порта нельзя устанавливать буквенное '
-                            f'значение. Порт {self.conf.id}, значение: {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Для ШИМ порта нельзя '
+                            f'устанавливать буквенное значение. '
+                            f'Порт {self.conf.id}, значение: {data}')
         except UpdateStateError:
-            _LOGGER.warning(f'Получен неизвестный формат данных для порта '
-                            f'relay (id={self.conf.id}), data = {data}')
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта relay '
+                            f'(id={self.conf.id}): {data}')
         except Exception as e:
-            _LOGGER.error(f'Ошибка при обработке данных порта №{self.conf.id}.'
-                          f'data = {data}. Исключение: {e}')
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
 
+class DigitalSensorBase(BasePort):
+    """Базовый класс для цифровых сенсоров"""
 
-class DSensorPortOneWire(BasePort):
-    """Клас для портов 1 wire сенсоров"""
-
-    def __init__(self, conf: OneWireSensorConfig):
-        super().__init__(conf)
-        self.conf: OneWireSensorConfig = conf
+    def __init__(self, conf: PortSensorConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: PortSensorConfig = conf
         self._state: dict = {}
 
+    @staticmethod
+    def get_states(raw_data: str) -> dict:
+        """Достаёт всевозможные показания датчиков из сырых данных"""
+        states = {}
+        if raw_data == PLC_BUSY:
+            raise PortBusy
+        sensors = raw_data.split('/')
+        for sensor in sensors:
+            category, value = sensor.split(':')
+            states[category] = value if value != 'NA' else STATE_UNAVAILABLE
+        return states
+
+    def short_data(self, data):
+        """Прописать правильную обработку короткого вида записи данных"""
+        _LOGGER.warning(f'Megad id={self.megad_id}. Получен сокращённый '
+                        f'вариант ответа от контроллера.'
+                        f' Порт {self.conf.id}, значение: {data}')
+
+    def check_type_sensor(self, data):
+        """Проверка типа сенсора по полученным данным"""
+
+
+    def update_state(self, data: str):
+        """
+        data: temp:24/hum:43
+              CO2:980/temp:25/hum:38
+              temp:NA
+        """
+        try:
+            self._state = self.get_states(data)
+            if not self._state:
+                raise UpdateStateError
+
+            self.check_type_sensor(data)
+
+        except ValueError:
+            self.short_data(data)
+        except PortBusy:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Неуспешная попытка '
+                            f'обновить данные порта id={self.conf.id}, '
+                            f'Ответ = {data}')
+        except TypeSensorError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Проверьте настройки '
+                            f'порта (id={self.conf.id}). data = {data}. '
+                            f'Порт должен быть настроен как '
+                            f'{self.conf.type_sensor}')
+        except UpdateStateError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта sensor '
+                            f'(id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
+
+
+class OneWireSensorPort(DigitalSensorBase):
+    """Клас для портов 1 wire сенсоров"""
+
+    def __init__(self, conf: OneWireSensorConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: OneWireSensorConfig = conf
+
+    def check_type_sensor(self, data):
+        """Проверка что данные относятся к порту настроенного как 1 wire"""
+        if not TEMPERATURE in self._state:
+            raise TypeSensorError
+
+    def short_data(self, data):
+        """Обработка данных если температура получена одним числом"""
+        if data.isdigit():
+            self._state[TEMPERATURE] = data
+        else:
+            self._state[TEMPERATURE] = STATE_UNAVAILABLE
+
+
+class DHTSensorPort(DigitalSensorBase):
+    """Клас для портов dht сенсоров"""
+
+    def __init__(self, conf: DHTSensorConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: DHTSensorConfig = conf
+
+    def check_type_sensor(self, data):
+        """Проверка что данные относятся к порту настроенного как dht"""
+        if not all(type_sensor in self._state for type_sensor in (
+                TEMPERATURE, HUMIDITY)):
+            raise TypeSensorError

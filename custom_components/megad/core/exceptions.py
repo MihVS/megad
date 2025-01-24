@@ -44,3 +44,8 @@ class InvalidSlug(Exception):
 class InvalidPasswordMegad(HomeAssistantError):
     """Неверный пароль для контроллера"""
     pass
+
+
+class TypeSensorError(Exception):
+    """Данные не соответствуют типу устройства"""
+    pass

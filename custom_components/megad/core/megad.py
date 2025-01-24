@@ -8,13 +8,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
-    BasePort
+    BasePort, OneWireSensorPort, DHTSensorPort
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
     get_version_software
 )
-from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD
+from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD
 from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
 from ..const import MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA
@@ -36,7 +36,7 @@ class MegaD:
         self.id = config.plc.megad_id
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
-            PWMPortOut
+            PWMPortOut, OneWireSensorPort, DHTSensorPort
         ]] = []
         self.url = (f'http://{self.config.plc.ip_megad}/'
                     f'{self.config.plc.password}/')
@@ -95,29 +95,30 @@ class MegaD:
                     and (port.mode == ModeInMegaD.P_R or
                          port.always_send_to_server)
             ):
-                binary_sensor = BinaryPortIn(port)
-                self.ports.append(binary_sensor)
+                self.ports.append(BinaryPortIn(port, self.id))
             elif (
                     port.type_port == TypePortMegaD.IN
                     and port.mode == ModeInMegaD.C
             ):
-                button = BinaryPortClick(port)
-                self.ports.append(button)
+                self.ports.append(BinaryPortClick(port, self.id))
             elif port.type_port == TypePortMegaD.IN:
-                count = BinaryPortCount(port)
-                self.ports.append(count)
+                self.ports.append(BinaryPortCount(port, self.id))
             elif (
                     port.type_port == TypePortMegaD.OUT
                     and (port.mode in (ModeOutMegaD.SW, ModeOutMegaD.SW_LINK))
             ):
-                relay = ReleyPortOut(port)
-                self.ports.append(relay)
+                self.ports.append(ReleyPortOut(port, self.id))
             elif (
                     port.type_port == TypePortMegaD.OUT
                     and (port.mode in (ModeOutMegaD.PWM, ))
             ):
-                pwm = PWMPortOut(port)
-                self.ports.append(pwm)
+                self.ports.append(PWMPortOut(port, self.id))
+            elif port.type_port == TypePortMegaD.DSEN:
+                match port.type_sensor:
+                    case TypeDSensorMegaD.ONEW:
+                        self.ports.append(OneWireSensorPort(port, self.id))
+                    case TypeDSensorMegaD.DHT11 | TypeDSensorMegaD.DHT22:
+                        self.ports.append(DHTSensorPort(port, self.id))
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 
