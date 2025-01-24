@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 from homeassistant.const import (
-    UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION
+    UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime
 )
 from homeassistant.components.sensor.const import SensorDeviceClass
 
@@ -28,6 +28,7 @@ NAME_SCRIPT_MEGAD = 'sct'
 TEMPERATURE = 'temp'
 HUMIDITY = 'hum'
 CO2 = 'CO2'
+UPTIME = 'uptime'
 
 PLC_BUSY = 'busy'
 
@@ -52,13 +53,15 @@ PORT_COMMAND = PortCommand(ON='1', OFF='0', TOGGLE='2')
 SENSOR_UNIT = {
     TEMPERATURE: UnitOfTemperature.CELSIUS,
     HUMIDITY: PERCENTAGE,
-    CO2: CONCENTRATION_PARTS_PER_MILLION
+    CO2: CONCENTRATION_PARTS_PER_MILLION,
+    UPTIME: UnitOfTime.MINUTES
 }
 
 SENSOR_CLASS = {
     TEMPERATURE: SensorDeviceClass.TEMPERATURE,
     HUMIDITY: SensorDeviceClass.HUMIDITY,
-    CO2: SensorDeviceClass.CO2
+    CO2: SensorDeviceClass.CO2,
+    UPTIME: SensorDeviceClass.DURATION
 }
 
 STATE_RELAY = ['on', 'off', '1', '0']

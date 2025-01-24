@@ -4,12 +4,13 @@ from propcache import cached_property
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
-    DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE
+    DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME
 )
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
@@ -46,6 +47,12 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, TEMPERATURE)
             )
+    sensors.append(SensorDeviceMegaD(
+        coordinator, f'{entry_id}-{megad.id}-{TEMPERATURE}', TEMPERATURE)
+    )
+    sensors.append(SensorDeviceMegaD(
+        coordinator, f'{entry_id}-{megad.id}-{UPTIME}', UPTIME)
+    )
     if sensors:
         async_add_entities(sensors)
         _LOGGER.debug(f'Добавлены сенсоры: {sensors}')
@@ -168,6 +175,58 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
         return self._port.state[self.type_sensor]
+
+    @cached_property
+    def native_unit_of_measurement(self) -> str | None:
+        """Возвращает единицу измерения сенсора"""
+        return SENSOR_UNIT[self.type_sensor]
+
+    @cached_property
+    def device_class(self) -> str | None:
+        return SENSOR_CLASS[self.type_sensor]
+
+
+class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, unique_id: str,
+            type_sensor: str
+    ) -> None:
+        super().__init__(coordinator)
+        self._megad: MegaD = coordinator.megad
+        self.type_sensor = type_sensor
+        self._sensor_name: str = f'megad_{self._megad.id}_{type_sensor}'
+        self._unique_id: str = unique_id
+        self._attr_device_info = coordinator.devices_info()
+        self.entity_id = (f'sensor.megad_{self._megad.id}_{self.type_sensor}')
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Sensor entity {self.entity_id}>"
+        return super().__repr__()
+
+    @cached_property
+    def name(self) -> str:
+        return self._sensor_name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @cached_property
+    def state_class(self) -> SensorStateClass | str | None:
+        """Return the state class of this entity, if any."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> float | str:
+        """Возвращает состояние сенсора"""
+        if self.type_sensor == TEMPERATURE:
+            return self._megad.temperature
+        elif self.type_sensor == UPTIME:
+            return self._megad.uptime
+        else:
+            return STATE_UNAVAILABLE
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
