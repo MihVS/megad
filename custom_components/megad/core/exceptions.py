@@ -49,3 +49,8 @@ class InvalidPasswordMegad(HomeAssistantError):
 class TypeSensorError(Exception):
     """Данные не соответствуют типу устройства"""
     pass
+
+
+class PortOFFError(Exception):
+    """Порт не настроен"""
+    pass

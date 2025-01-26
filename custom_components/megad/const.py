@@ -31,6 +31,7 @@ CO2 = 'CO2'
 UPTIME = 'uptime'
 
 PLC_BUSY = 'busy'
+PORT_OFF = 'off'
 
 # Номера страниц конфигураций для запроса
 START_CONFIG = 0

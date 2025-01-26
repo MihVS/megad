@@ -4,6 +4,8 @@ from datetime import timedelta
 
 import async_timeout
 
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
+from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 from homeassistant.config_entries import ConfigEntry
 from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
@@ -30,6 +32,38 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
+def remove_entity(
+        hass: HomeAssistant, megad: MegaD, config_entry: ConfigEntry):
+    """Удаление неиспользуемых сущностей"""
+    entity_registry = async_get_entity_registry(hass)
+    entities = entity_registry.entities
+    _LOGGER.info(f'Сущности связанные с {config_entry}: {entities}')
+    active_entity = megad.ports
+    _LOGGER.info(f'Активные порты: {active_entity}')
+
+
+
+    # entity_registry = async_get_entity_registry(hass)
+    # # device_registry = async_get_device_registry(hass)
+    # current_entities = {
+    #     obj.platform.domain + '.' + obj.unique_id.lower().replace("-", "_") for
+    #     hub_id, entities in hass.data[DOMAIN].get("ports", {}).items() for obj
+    #     in entities}
+    # _LOGGER.debug("Current unique IDs: %s", current_entities)
+    # all_entities = {
+    #     entity_id: entity
+    #     for entity_id, entity in entity_registry.entities.items()
+    #     if entity.config_entry_id == config_entry.entry_id
+    # }
+    # entities_to_remove = [
+    #     entity_id
+    #     for entity_id, entity in all_entities.items()
+    #     if entity_id not in current_entities
+    # ]
+    #
+    # _LOGGER.debug("Entities to remove: %s", entities_to_remove)
+
+
 async def async_setup_entry(
         hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     config_entry.async_on_unload(
@@ -44,9 +78,13 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry_id] = coordinator
+
+    remove_entity(hass, megad, config_entry)
+
     await hass.config_entries.async_forward_entry_setups(
         config_entry, PLATFORMS
     )
+    remove_entity(hass, megad, config_entry)
     return True
 
 

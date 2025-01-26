@@ -2,15 +2,17 @@ import logging
 import re
 from abc import ABC, abstractmethod
 
-from homeassistant.const import STATE_UNAVAILABLE
-from .exceptions import UpdateStateError, TypeSensorError, PortBusy
-from .models_megad import (PortConfig, PortInConfig, PortOutRelayConfig,
-                           PortOutPWMConfig, OneWireSensorConfig,
-                           PortSensorConfig, DHTSensorConfig,
-                           )
-from ..const import (STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK,
-                     STATE_BUTTON, TEMPERATURE, PLC_BUSY, HUMIDITY
-                     )
+from .exceptions import (
+    UpdateStateError, TypeSensorError, PortBusy, PortOFFError
+)
+from .models_megad import (
+    PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
+    OneWireSensorConfig, PortSensorConfig, DHTSensorConfig
+)
+from ..const import (
+    STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
+    TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -325,6 +327,7 @@ class PWMPortOut(BasePort):
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
 
+
 class DigitalSensorBase(BasePort):
     """Базовый класс для цифровых сенсоров"""
 
@@ -337,12 +340,14 @@ class DigitalSensorBase(BasePort):
     def get_states(raw_data: str) -> dict:
         """Достаёт всевозможные показания датчиков из сырых данных"""
         states = {}
-        if raw_data == PLC_BUSY:
+        if raw_data.lower() == PLC_BUSY:
             raise PortBusy
+        if raw_data.lower() == PORT_OFF:
+            raise PortOFFError
         sensors = raw_data.split('/')
         for sensor in sensors:
             category, value = sensor.split(':')
-            states[category] = value if value != 'NA' else STATE_UNAVAILABLE
+            states[category] = value if value != 'NA' else None
         return states
 
     def short_data(self, data):
@@ -353,7 +358,6 @@ class DigitalSensorBase(BasePort):
 
     def check_type_sensor(self, data):
         """Проверка типа сенсора по полученным данным"""
-
 
     def update_state(self, data: str):
         """
@@ -373,6 +377,10 @@ class DigitalSensorBase(BasePort):
         except PortBusy:
             _LOGGER.warning(f'Megad id={self.megad_id}. Неуспешная попытка '
                             f'обновить данные порта id={self.conf.id}, '
+                            f'Ответ = {data}')
+        except PortOFFError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Порт не настроен! '
+                            f'Проверьте настройки порта id={self.conf.id}, '
                             f'Ответ = {data}')
         except TypeSensorError:
             _LOGGER.warning(f'Megad id={self.megad_id}. Проверьте настройки '
@@ -398,7 +406,7 @@ class OneWireSensorPort(DigitalSensorBase):
 
     def check_type_sensor(self, data):
         """Проверка что данные относятся к порту настроенного как 1 wire"""
-        if not TEMPERATURE in self._state:
+        if not (TEMPERATURE in self._state):
             raise TypeSensorError
 
     def short_data(self, data):
@@ -406,7 +414,7 @@ class OneWireSensorPort(DigitalSensorBase):
         if data.isdigit():
             self._state[TEMPERATURE] = data
         else:
-            self._state[TEMPERATURE] = STATE_UNAVAILABLE
+            self._state[TEMPERATURE] = None
 
 
 class DHTSensorPort(DigitalSensorBase):
