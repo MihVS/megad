@@ -36,10 +36,24 @@ def remove_entity(
         hass: HomeAssistant, megad: MegaD, config_entry: ConfigEntry):
     """Удаление неиспользуемых сущностей"""
     entity_registry = async_get_entity_registry(hass)
-    entities = entity_registry.entities
-    _LOGGER.info(f'Сущности связанные с {config_entry}: {entities}')
-    active_entity = megad.ports
-    _LOGGER.info(f'Активные порты: {active_entity}')
+
+    # _LOGGER.warning(entity_registry.entities)
+    count = 0
+    for entity_id, entity in entity_registry.entities.items():
+        _LOGGER.info(entity_id)
+        _LOGGER.info(entity)
+        # _LOGGER.warning(entity.config_entry_id)
+        # _LOGGER.warning(config_entry.entry_id)
+        if entity.config_entry_id == config_entry.entry_id:
+            count += 1
+            _LOGGER.debug(entity_id)
+    _LOGGER.info(count)
+
+
+    # entities = entity_registry.entities
+    # _LOGGER.info(f'Сущности связанные с {config_entry}: {entities}')
+    # active_entity = megad.ports
+    # _LOGGER.info(f'Активные порты: {active_entity}')
 
 
 
