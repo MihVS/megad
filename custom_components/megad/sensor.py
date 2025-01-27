@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
-    HUMIDITY
+    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS
 )
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
@@ -27,7 +27,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]
+    coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
     megad = coordinator.megad
 
     sensors = []
@@ -62,6 +62,9 @@ async def async_setup_entry(
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{UPTIME}', UPTIME)
     )
+    for sensor in sensors:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            sensor.unique_id)
     if sensors:
         async_add_entities(sensors)
         _LOGGER.debug(f'Добавлены сенсоры: {sensors}')

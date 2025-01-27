@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import BinaryPortIn
 from .core.enums import DeviceClassBinary
 from .core.megad import MegaD
@@ -24,7 +24,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]
+    coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
     megad = coordinator.megad
 
     binary_sensors = []
@@ -34,6 +34,9 @@ async def async_setup_entry(
             binary_sensors.append(BinarySensorMegaD(
                 coordinator, port, unique_id)
             )
+    for binary_sensor in binary_sensors:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            binary_sensor.unique_id)
     if binary_sensors:
         async_add_entities(binary_sensors)
         _LOGGER.debug(f'Добавлены бинарные сенсоры: {binary_sensors}')

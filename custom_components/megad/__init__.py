@@ -4,12 +4,11 @@ from datetime import timedelta
 
 import async_timeout
 
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
-from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+from homeassistant.helpers.entity_registry import async_get
 from homeassistant.config_entries import ConfigEntry
 from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
-    PLATFORMS
+    PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS
 )
 from .core.config_parser import create_config_megad
 from .core.enums import ModeInMegaD
@@ -32,50 +31,18 @@ async def async_setup(hass: HomeAssistant, config: dict):
     return True
 
 
-def remove_entity(
-        hass: HomeAssistant, megad: MegaD, config_entry: ConfigEntry):
+def remove_entity(hass: HomeAssistant, current_entries_id: list,
+                  config_entry: ConfigEntry):
     """Удаление неиспользуемых сущностей"""
-    entity_registry = async_get_entity_registry(hass)
-
-    # _LOGGER.warning(entity_registry.entities)
-    count = 0
+    entity_registry = async_get(hass)
+    remove_entities = []
     for entity_id, entity in entity_registry.entities.items():
-        _LOGGER.info(entity_id)
-        _LOGGER.info(entity)
-        # _LOGGER.warning(entity.config_entry_id)
-        # _LOGGER.warning(config_entry.entry_id)
         if entity.config_entry_id == config_entry.entry_id:
-            count += 1
-            _LOGGER.debug(entity_id)
-    _LOGGER.info(count)
-
-
-    # entities = entity_registry.entities
-    # _LOGGER.info(f'Сущности связанные с {config_entry}: {entities}')
-    # active_entity = megad.ports
-    # _LOGGER.info(f'Активные порты: {active_entity}')
-
-
-
-    # entity_registry = async_get_entity_registry(hass)
-    # # device_registry = async_get_device_registry(hass)
-    # current_entities = {
-    #     obj.platform.domain + '.' + obj.unique_id.lower().replace("-", "_") for
-    #     hub_id, entities in hass.data[DOMAIN].get("ports", {}).items() for obj
-    #     in entities}
-    # _LOGGER.debug("Current unique IDs: %s", current_entities)
-    # all_entities = {
-    #     entity_id: entity
-    #     for entity_id, entity in entity_registry.entities.items()
-    #     if entity.config_entry_id == config_entry.entry_id
-    # }
-    # entities_to_remove = [
-    #     entity_id
-    #     for entity_id, entity in all_entities.items()
-    #     if entity_id not in current_entities
-    # ]
-    #
-    # _LOGGER.debug("Entities to remove: %s", entities_to_remove)
+            if entity.unique_id not in current_entries_id:
+                remove_entities.append(entity_id)
+    for entity_id in remove_entities:
+        entity_registry.async_remove(entity_id)
+        _LOGGER.info(f'Удалена устаревшая сущность {entity_id}')
 
 
 async def async_setup_entry(
@@ -91,19 +58,23 @@ async def async_setup_entry(
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry_id] = coordinator
-
-    remove_entity(hass, megad, config_entry)
-
+    hass.data[DOMAIN].setdefault(ENTRIES, {})
+    hass.data[DOMAIN].setdefault(CURRENT_ENTITY_IDS, {})
+    hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id] = []
+    hass.data[DOMAIN][ENTRIES][entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(
         config_entry, PLATFORMS
     )
-    remove_entity(hass, megad, config_entry)
+    current_entries_id = hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id]
+    remove_entity(hass, current_entries_id, config_entry)
+    _LOGGER.debug(f'Unique_id актуальных сущностей контроллера {megad.id}: '
+                  f'{current_entries_id}')
     return True
 
 
 async def update_listener(hass, entry):
     """Вызывается при изменении настроек интеграции."""
+    _LOGGER.info(f'Перезапуск интеграции для entry_id: {entry.entry_id})')
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -187,7 +158,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
         unload_ok = await hass.config_entries.async_unload_platforms(
             entry, PLATFORMS
         )
-        hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN][ENTRIES].pop(entry.entry_id)
 
         return unload_ok
     except Exception as e:

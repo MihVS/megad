@@ -7,6 +7,8 @@ from homeassistant.components.sensor.const import SensorDeviceClass
 
 DOMAIN = 'megad'
 MANUFACTURER = 'ab-log'
+ENTRIES = 'entries'
+CURRENT_ENTITY_IDS = 'current_entity_ids'
 
 # Таймауты
 TIME_UPDATE = 60

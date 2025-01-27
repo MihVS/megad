@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import ReleyPortOut, PWMPortOut
 from .core.entties import PortOutEntity
 from .core.enums import DeviceClassControl
@@ -23,7 +23,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]
+    coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
     megad = coordinator.megad
 
     lights = []
@@ -39,7 +39,10 @@ async def async_setup_entry(
                 unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
                 lights.append(LightPWMMegaD(
                     coordinator, port, unique_id)
-            )
+                )
+    for light in lights:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            light.unique_id)
     if lights:
         async_add_entities(lights)
         _LOGGER.debug(f'Добавлено освещение: {lights}')

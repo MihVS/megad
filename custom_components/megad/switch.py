@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN, PORT_COMMAND
+from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import ReleyPortOut, PWMPortOut, BasePort
 from .core.entties import PortOutEntity
 from .core.enums import DeviceClassControl
@@ -23,7 +23,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]
+    coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
     megad = coordinator.megad
     groups = {}
 
@@ -45,6 +45,9 @@ async def async_setup_entry(
             switches.append(SwitchGroupMegaD(
                 coordinator, group, name, ports, unique_id)
             )
+    for switch in switches:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            switch.unique_id)
     if switches:
         async_add_entities(switches)
         _LOGGER.debug(f'Добавлены переключатели: {switches}')

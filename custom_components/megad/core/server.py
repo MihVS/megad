@@ -7,8 +7,7 @@ from aiohttp.web_response import Response
 from homeassistant.components.http import HomeAssistantView
 # from .. import MegaDCoordinator
 
-from ..const import DOMAIN
-
+from ..const import DOMAIN, ENTRIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,12 +26,12 @@ class MegadHttpView(HomeAssistantView):
         params: dict = dict(request.query)
         _LOGGER.debug(f'MegaD request: {params}')
         hass = request.app['hass']
-        entry_ids = hass.data[DOMAIN]
+        entry_ids = hass.data[DOMAIN][ENTRIES]
         id_megad = params.get('mdid')
         port_id = params.get('pt')
         coordinator = None
         for entry_id in entry_ids:
-            coordinator_temp = hass.data[DOMAIN][entry_id]
+            coordinator_temp = hass.data[DOMAIN][ENTRIES][entry_id]
             if coordinator_temp.megad.id == id_megad:
                 coordinator = coordinator_temp
 

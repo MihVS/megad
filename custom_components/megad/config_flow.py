@@ -13,7 +13,8 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .const import DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD
+from .const import DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, \
+    ENTRIES
 from .core.config_parser import (
     async_read_configuration, write_config_megad, async_get_page_config,
     get_slug_server, create_config_megad
@@ -159,7 +160,6 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 megad_config = await create_config_megad(file_path)
                 json_data = megad_config.model_dump_json(indent=2)
                 _LOGGER.debug(f'megad_config_json: \n{json_data}')
-
                 if self.data.get('options'):
                     self.hass.config_entries.async_update_entry(
                         self.config_entry, data=self.data
@@ -285,7 +285,7 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await self.validate_user_input_step_main(user_input)
                 if DOMAIN in self.hass.data:
-                    check_exist_ip(ip, self.hass.data[DOMAIN])
+                    check_exist_ip(ip, self.hass.data[DOMAIN][ENTRIES])
                 if not errors:
                     self.data = {
                         'url': url,

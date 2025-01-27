@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN, PORT_COMMAND
+from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import ReleyPortOut, PWMPortOut
 from .core.entties import PortOutEntity
 from .core.enums import DeviceClassControl
@@ -24,7 +24,7 @@ async def async_setup_entry(
         async_add_entities: AddEntitiesCallback
 ) -> None:
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]
+    coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
     megad = coordinator.megad
 
     fans = []
@@ -41,6 +41,9 @@ async def async_setup_entry(
                 fans.append(FanWMMegaD(
                     coordinator, port, unique_id)
                 )
+    for fan in fans:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            fan.unique_id)
     if fans:
         async_add_entities(fans)
         _LOGGER.debug(f'Добавлена вентиляция: {fans}')
