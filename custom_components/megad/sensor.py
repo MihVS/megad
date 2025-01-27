@@ -14,7 +14,7 @@ from .const import (
 )
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
-    DigitalSensorBase, DHTSensorPort
+    DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort
 )
 from .core.megad import MegaD
 
@@ -56,6 +56,12 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id2, HUMIDITY)
             )
+            # Создать новый класс сенсора для шины или подумать можно ли обойтись SensorMegaD
+        # if isinstance(port, OneWireBusSensorPort):
+        #     unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+        #     sensors.append(SensorMegaD(
+        #         coordinator, port, unique_id, TEMPERATURE)
+        #     )
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{TEMPERATURE}', TEMPERATURE)
     )
@@ -210,7 +216,7 @@ class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):
         self._sensor_name: str = f'megad_{self._megad.id}_{type_sensor}'
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = (f'sensor.megad_{self._megad.id}_{self.type_sensor}')
+        self.entity_id = f'sensor.megad_{self._sensor_name}'
 
     def __repr__(self) -> str:
         if not self.hass:

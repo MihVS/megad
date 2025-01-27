@@ -46,6 +46,10 @@ VALUE = 'v'
 COUNT = 'cnt'
 MODE = 'm'
 CLICK = 'click'
+PORT = 'pt'
+COMMAND = 'cmd'
+ALL_STATES = 'all'
+LIST_STATES = 'list'
 
 StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
 STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")

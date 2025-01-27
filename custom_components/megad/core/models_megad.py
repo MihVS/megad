@@ -267,6 +267,10 @@ class OneWireSensorConfig(PortSensorConfig, ModeControlSensorMixin):
     """Сенсор температурный 1 wire"""
 
 
+class OneWireBusSensorConfig(PortSensorConfig):
+    """Сенсоры температурные 1 wire соединённые шиной"""
+
+
 class DHTSensorConfig(PortSensorConfig):
     """Сенсор температуры и влажности типа dht11, dht22"""
 

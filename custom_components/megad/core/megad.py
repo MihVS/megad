@@ -1,14 +1,14 @@
 import logging
+from http import HTTPStatus
 from typing import Union
 
 import async_timeout
-from http import HTTPStatus
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
-    BasePort, OneWireSensorPort, DHTSensorPort
+    BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -17,7 +17,10 @@ from .config_parser import (
 from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD
 from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
-from ..const import MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA
+from ..const import (
+    MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
+    LIST_STATES
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +39,8 @@ class MegaD:
         self.id = config.plc.megad_id
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
-            PWMPortOut, OneWireSensorPort, DHTSensorPort
+            PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
+
         ]] = []
         self.url = (f'http://{self.config.plc.ip_megad}/'
                     f'{self.config.plc.password}/')
@@ -50,15 +54,19 @@ class MegaD:
         return (f"<MegaD(id={self.config.plc.megad_id}, "
                 f"ip={self.config.plc.ip_megad}, ports={self.ports})>")
 
-    async def get_status_ports(self) -> str:
-        """Запрос состояния всех портов"""
-        params = {'cmd': 'all'}
+    async def get_status(self, params: dict) -> str:
+        """Получение статуса по переданным параметрам"""
         response = await self.session.get(url=self.url, params=params)
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.error(f'Неверный пароль для устройства с id {self.id}')
             raise InvalidPasswordMegad(f'Проверьте пароль у устройства '
                                        f'с id {self.id}')
-        text = await response.text()
+        return await response.text()
+
+    async def get_status_ports(self) -> str:
+        """Запрос состояния всех портов"""
+        params = {COMMAND: ALL_STATES}
+        text = await self.get_status(params)
         _LOGGER.debug(f'Состояние всех портов id:{self.id}: {text}')
         return text
 
@@ -78,17 +86,27 @@ class MegaD:
 
     async def update_ports(self):
         """Обновление данных настроенных портов"""
-
         status_ports_raw = await self.get_status_ports()
         status_ports = status_ports_raw.split(';')
         for port in self.ports:
             state = status_ports[port.conf.id]
             if state:
                 port.update_state(state)
+            elif isinstance(port, OneWireBusSensorPort):
+                state = await self.get_status_one_wire_bus(port)
+                port.update_state(state)
+
+
+    async def get_status_one_wire_bus(self, port: OneWireBusSensorPort) -> str:
+        """Обновление шины сенсоров порта 1 wire"""
+        params = {PORT: port.conf.id, COMMAND: LIST_STATES}
+        text = await self.get_status(params)
+        _LOGGER.debug(f'Состояние 1 wire bus {self.id}-{port.conf.name}: '
+                      f'{text}')
+        return text
 
     def init_ports(self):
         """Инициализация портов. Разделение их на устройства."""
-
         for port in self.config.ports:
             if (
                     port.type_port == TypePortMegaD.IN
@@ -119,6 +137,8 @@ class MegaD:
                         self.ports.append(OneWireSensorPort(port, self.id))
                     case TypeDSensorMegaD.DHT11 | TypeDSensorMegaD.DHT22:
                         self.ports.append(DHTSensorPort(port, self.id))
+                    case TypeDSensorMegaD.ONEWBUS:
+                        self.ports.append(OneWireBusSensorPort(port, self.id))
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 

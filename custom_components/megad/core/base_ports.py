@@ -7,7 +7,8 @@ from .exceptions import (
 )
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
-    OneWireSensorConfig, PortSensorConfig, DHTSensorConfig
+    OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
+    OneWireBusSensorConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -358,6 +359,7 @@ class DigitalSensorBase(BasePort):
 
     def check_type_sensor(self, data):
         """Проверка типа сенсора по полученным данным"""
+        pass
 
     def update_state(self, data: str):
         """
@@ -429,3 +431,34 @@ class DHTSensorPort(DigitalSensorBase):
         if not all(type_sensor in self._state for type_sensor in (
                 TEMPERATURE, HUMIDITY)):
             raise TypeSensorError
+
+
+class OneWireBusSensorPort(DigitalSensorBase):
+    """Клас для портов 1 wire сенсоров соединённых шиной"""
+
+    def __init__(self, conf: OneWireBusSensorConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: OneWireBusSensorConfig = conf
+
+    @staticmethod
+    def get_states(raw_data: str) -> dict:
+        """
+        Достаёт показания датчиков из данных шины
+        raw_data: fed000412106:24.37;619303000000:24.68
+        """
+        states = {}
+        if 'window' in raw_data:
+            raise TypeSensorError
+        if raw_data.lower() == PLC_BUSY:
+            raise PortBusy
+        if raw_data.lower() == PORT_OFF:
+            raise PortOFFError
+        sensors = raw_data.split(';')
+        for sensor in sensors:
+            id_sensor, value = sensor.split(':')
+            states[id_sensor] = value if value != 'NA' else None
+        return states
+
+
+# fed000412106:24.37;619303000000:24.68
+# pt=40&cmd=list
