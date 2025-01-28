@@ -10,11 +10,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
-    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2
+    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS
 )
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
-    DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x
+    DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
+    I2CSensorSTH31
 )
 from .core.megad import MegaD
 
@@ -47,7 +48,7 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, TEMPERATURE)
             )
-        if isinstance(port, DHTSensorPort):
+        if isinstance(port, (DHTSensorPort, I2CSensorSTH31)):
             unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                               f'{TEMPERATURE}')
             sensors.append(SensorMegaD(
@@ -183,7 +184,8 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
         self._megad: MegaD = coordinator.megad
         self._port: DigitalSensorBase = port
         self.type_sensor = type_sensor
-        self._sensor_name: str = f'{port.conf.name}_{type_sensor}'
+        self._sensor_name: str = (f'{port.conf.name} '
+                                  f'{TYPE_SENSOR_RUS[type_sensor]}')
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
         self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'

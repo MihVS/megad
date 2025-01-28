@@ -419,7 +419,34 @@ class OneWireSensorPort(DigitalSensorBase):
             self._state[TEMPERATURE] = None
 
 
-class DHTSensorPort(DigitalSensorBase):
+class TempHumSensor(DigitalSensorBase):
+    """Класс для сенсора с температурой и влажностью"""
+
+    def __init__(self, conf: PortConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: PortConfig = conf
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 25/38
+        """
+        try:
+            temp, hum = data.split('/')
+            self._state[TEMPERATURE] = temp
+            self._state[HUMIDITY] = hum
+        except ValueError:
+            _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
+                            f'port{self.conf.id}: {data}')
+
+    def check_type_sensor(self, data):
+        """Проверка типа сенсора по полученным данным"""
+        if data:
+            if len(data.split('/')) != 2:
+                raise TypeSensorError
+
+
+class DHTSensorPort(TempHumSensor):
     """Клас для портов dht сенсоров"""
 
     def __init__(self, conf: DHTSensorConfig, megad_id):
@@ -486,3 +513,11 @@ class I2CSensorSCD4x(DigitalSensorBase):
         if data:
             if len(data.split('/')) != 3:
                 raise TypeSensorError
+
+
+class I2CSensorSTH31(TempHumSensor):
+    """Класс для сенсора типа STH31 I2C интерфейса"""
+
+    def __init__(self, conf: I2CConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: I2CConfig = conf

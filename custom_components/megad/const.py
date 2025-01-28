@@ -32,6 +32,13 @@ HUMIDITY = 'hum'
 CO2 = 'CO2'
 UPTIME = 'uptime'
 
+# Перевод сенсоров
+TYPE_SENSOR_RUS = {
+    TEMPERATURE: 'температура',
+    HUMIDITY: 'влажность',
+    CO2: 'CO2'
+}
+
 PLC_BUSY = 'busy'
 PORT_OFF = 'off'
 
