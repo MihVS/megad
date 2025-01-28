@@ -10,11 +10,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
-    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS
+    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2
 )
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
-    DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort
+    DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x
 )
 from .core.megad import MegaD
 
@@ -48,13 +48,14 @@ async def async_setup_entry(
                 coordinator, port, unique_id, TEMPERATURE)
             )
         if isinstance(port, DHTSensorPort):
-            unique_id1 = f'{entry_id}-{megad.id}-{port.conf.id}-{TEMPERATURE}'
+            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                              f'{TEMPERATURE}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id1, TEMPERATURE)
+                coordinator, port, unique_id_temp, TEMPERATURE)
             )
-            unique_id2 = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
+            unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id2, HUMIDITY)
+                coordinator, port, unique_id_hum, HUMIDITY)
             )
         if isinstance(port, OneWireBusSensorPort):
             for id_one_wire in port.state:
@@ -63,6 +64,22 @@ async def async_setup_entry(
                 sensors.append(SensorBusMegaD(
                     coordinator, port, unique_id, TEMPERATURE, id_one_wire)
                 )
+        if isinstance(port, I2CSensorSCD4x):
+            unique_id_co2 = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                             f'{CO2.lower()}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_co2, CO2)
+            )
+            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                              f'{TEMPERATURE}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_temp, TEMPERATURE)
+            )
+            unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_hum, HUMIDITY)
+            )
+
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{TEMPERATURE}', TEMPERATURE)
     )

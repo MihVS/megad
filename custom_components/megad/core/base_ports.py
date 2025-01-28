@@ -8,11 +8,11 @@ from .exceptions import (
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
-    OneWireBusSensorConfig
+    OneWireBusSensorConfig, I2CConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
-    TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF
+    TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -458,3 +458,31 @@ class OneWireBusSensorPort(DigitalSensorBase):
             id_sensor, value = sensor.split(':')
             states[id_sensor] = value if value != 'NA' else None
         return states
+
+
+class I2CSensorSCD4x(DigitalSensorBase):
+    """Класс для сенсора типа SCD4x I2C интерфейса"""
+
+    def __init__(self, conf: I2CConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: I2CConfig = conf
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 980/25/38
+        """
+        try:
+            co2, temp, hum = data.split('/')
+            self._state[CO2] = co2
+            self._state[TEMPERATURE] = temp
+            self._state[HUMIDITY] = hum
+        except ValueError:
+            _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
+                            f'port{self.conf.id}: {data}')
+
+    def check_type_sensor(self, data):
+        """Проверка типа сенсора по полученным данным"""
+        if data:
+            if len(data.split('/')) != 3:
+                raise TypeSensorError

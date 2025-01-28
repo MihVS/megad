@@ -8,18 +8,22 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
-    BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort
+    BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
+    I2CSensorSCD4x
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
     get_version_software
 )
-from .enums import TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD
+from .enums import (
+    TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
+    ModeI2CMegaD
+)
 from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
-    LIST_STATES
+    LIST_STATES, SCL_PORT, I2C_DEVICE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,7 +44,7 @@ class MegaD:
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-
+            I2CSensorSCD4x
         ]] = []
         self.url = (f'http://{self.config.plc.ip_megad}/'
                     f'{self.config.plc.password}/')
@@ -95,12 +99,27 @@ class MegaD:
             elif isinstance(port, OneWireBusSensorPort):
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
+            elif isinstance(port, I2CSensorSCD4x):
+                state = await self.get_status_scd4x(port)
+                port.update_state(state)
 
     async def get_status_one_wire_bus(self, port: OneWireBusSensorPort) -> str:
         """Обновление шины сенсоров порта 1 wire"""
         params = {PORT: port.conf.id, COMMAND: LIST_STATES}
         text = await self.get_status(params)
         _LOGGER.debug(f'Состояние 1 wire bus {self.id}-{port.conf.name}: '
+                      f'{text}')
+        return text
+
+    async def get_status_scd4x(self, port: I2CSensorSCD4x) -> str:
+        """Обновление сенсора СО2 типа SCD4x"""
+        params = {
+            PORT: port.conf.id,
+            SCL_PORT: port.conf.scl,
+            I2C_DEVICE: port.conf.device
+        }
+        text = await self.get_status(params)
+        _LOGGER.debug(f'Состояние I2C сенсора {self.id}-{port.conf.name}: '
                       f'{text}')
         return text
 
@@ -138,6 +157,13 @@ class MegaD:
                         self.ports.append(DHTSensorPort(port, self.id))
                     case TypeDSensorMegaD.ONEWBUS:
                         self.ports.append(OneWireBusSensorPort(port, self.id))
+            elif (
+                    port.type_port == TypePortMegaD.I2C
+                    and port.mode == ModeI2CMegaD.SDA
+            ):
+                match port.device:
+                    case DeviceI2CMegaD.SCD4x:
+                        self.ports.append(I2CSensorSCD4x(port, self.id))
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 

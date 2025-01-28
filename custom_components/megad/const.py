@@ -50,6 +50,8 @@ PORT = 'pt'
 COMMAND = 'cmd'
 ALL_STATES = 'all'
 LIST_STATES = 'list'
+SCL_PORT = 'scl'
+I2C_DEVICE = 'i2c_dev'
 
 StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
 STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")
