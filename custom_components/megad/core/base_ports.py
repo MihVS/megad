@@ -458,7 +458,3 @@ class OneWireBusSensorPort(DigitalSensorBase):
             id_sensor, value = sensor.split(':')
             states[id_sensor] = value if value != 'NA' else None
         return states
-
-
-# fed000412106:24.37;619303000000:24.68
-# pt=40&cmd=list
