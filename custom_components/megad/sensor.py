@@ -56,12 +56,13 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id2, HUMIDITY)
             )
-            # Создать новый класс сенсора для шины или подумать можно ли обойтись SensorMegaD
-        # if isinstance(port, OneWireBusSensorPort):
-        #     unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
-        #     sensors.append(SensorMegaD(
-        #         coordinator, port, unique_id, TEMPERATURE)
-        #     )
+        if isinstance(port, OneWireBusSensorPort):
+            for id_one_wire in port.state:
+                unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                             f'{id_one_wire}')
+                sensors.append(SensorBusMegaD(
+                    coordinator, port, unique_id, TEMPERATURE, id_one_wire)
+                )
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{TEMPERATURE}', TEMPERATURE)
     )
@@ -202,6 +203,25 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
     @cached_property
     def device_class(self) -> str | None:
         return SENSOR_CLASS.get(self.type_sensor)
+
+
+class SensorBusMegaD(SensorMegaD):
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: DigitalSensorBase,
+            unique_id: str, type_sensor: str, id_one_wire: str
+    ) -> None:
+        super().__init__(coordinator, port, unique_id, type_sensor)
+        self.id_one_wire = id_one_wire
+        self._sensor_name: str = f'{port.conf.name}_{id_one_wire}'
+        self._unique_id: str = unique_id
+        self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'
+                          f'{id_one_wire}')
+
+    @property
+    def native_value(self) -> float | str:
+        """Возвращает состояние сенсора"""
+        return self._port.state.get(self.id_one_wire)
 
 
 class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):

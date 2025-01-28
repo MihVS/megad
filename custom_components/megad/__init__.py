@@ -126,10 +126,10 @@ class MegaDCoordinator(DataUpdateCoordinator):
     async def _turn_off_state(self, state_off, delay, port_id, data):
         """Возвращает выключенное состояние порта"""
         self.megad.update_port(port_id, data)
-        self.async_set_updated_data(self.megad)
+        self.hass.loop.call_soon(self.async_update_listeners)
         await asyncio.sleep(delay)
         self.megad.update_port(port_id, state_off)
-        self.async_set_updated_data(self.megad)
+        self.hass.loop.call_soon(self.async_update_listeners)
 
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""
@@ -140,14 +140,14 @@ class MegaDCoordinator(DataUpdateCoordinator):
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
             self.megad.update_port(port_id, data)
-            self.async_set_updated_data(self.megad)
+            self.hass.loop.call_soon(self.async_update_listeners)
 
     def update_group_state(self, port_states: dict[int, str]):
         """Обновление состояний портов в группе"""
 
         for port_id, state in port_states.items():
             self.megad.update_port(port_id, state)
-        self.async_set_updated_data(self.megad)
+        self.hass.loop.call_soon(self.async_update_listeners)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

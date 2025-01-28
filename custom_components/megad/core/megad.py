@@ -96,7 +96,6 @@ class MegaD:
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
 
-
     async def get_status_one_wire_bus(self, port: OneWireBusSensorPort) -> str:
         """Обновление шины сенсоров порта 1 wire"""
         params = {PORT: port.conf.id, COMMAND: LIST_STATES}
