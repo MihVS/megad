@@ -2,10 +2,10 @@ import logging
 
 from propcache import cached_property
 
-from config.custom_components.megad import MegaDCoordinator
-from config.custom_components.megad.const import PORT_COMMAND
-from config.custom_components.megad.core.base_ports import ReleyPortOut
-from config.custom_components.megad.core.megad import MegaD
+from .. import MegaDCoordinator
+from ..const import PORT_COMMAND
+from .base_ports import ReleyPortOut
+from .megad import MegaD
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 

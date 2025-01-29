@@ -1,24 +1,23 @@
+import asyncio
+import logging
 import os
 import re
 from datetime import timedelta
-
-import aiohttp
-import asyncio
-import aiofiles
-import logging
-
-from bs4 import BeautifulSoup
 from urllib.parse import parse_qsl
 
-from config.custom_components.megad.const import (
-    PATH_CONFIG_MEGAD, TITLE_MEGAD, MAIN_CONFIG, NAME_SCRIPT_MEGAD
-)
+import aiofiles
+import aiohttp
+from bs4 import BeautifulSoup
+
 from .exceptions import WriteConfigError
 from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
     WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
     AnalogPortConfig, SystemConfigMegaD
+)
+from ..const import (
+    TITLE_MEGAD, NAME_SCRIPT_MEGAD
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -149,11 +148,11 @@ def _check_url(url: str, check: bool) -> bool:
 
 
 async def async_read_configuration(
-        url: str, name_file: str, session: aiohttp.ClientSession):
+        url: str, name_file: str, session: aiohttp.ClientSession, path):
     """Чтение конфигурации с контроллера и запись её в файл"""
     base_url, pages = await async_parse_pages(url, session)
-    os.makedirs(os.path.dirname(PATH_CONFIG_MEGAD), exist_ok=True)
-    name_file = os.path.join(PATH_CONFIG_MEGAD, name_file)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    name_file = os.path.join(path, name_file)
 
     count_line = len(pages)
     i = 1

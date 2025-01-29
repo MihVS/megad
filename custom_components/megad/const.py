@@ -16,7 +16,7 @@ TIME_OUT_UPDATE_DATA = 5
 
 COUNTER_CONNECT = 0
 
-PATH_CONFIG_MEGAD = './config/custom_components/megad/config_megad/'
+PATH_CONFIG_MEGAD = 'custom_components/megad/config_megad/'
 
 # Значения по умолчанию
 DEFAULT_IP = '192.168.0.14'

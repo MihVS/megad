@@ -13,8 +13,9 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .const import DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, \
-    ENTRIES
+from .const import (
+    DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, ENTRIES
+)
 from .core.config_parser import (
     async_read_configuration, write_config_megad, async_get_page_config,
     get_slug_server, create_config_megad
@@ -72,6 +73,10 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
 
     data = {}
 
+    def get_path_to_config(self) -> str:
+        """Возвращает путь до каталога с настройками контроллера"""
+        return self.hass.config.path(PATH_CONFIG_MEGAD)
+
     def data_schema_main(self):
         return vol.Schema(
                 {
@@ -124,7 +129,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
             'select_config': 'Выбрать готовую конфигурацию',
             'write_config': 'Записать конфигурацию на MegaD'
         }
-        config_list = await get_list_config_megad()
+        config_list = await get_list_config_megad(
+            path=self.get_path_to_config()
+        )
         if not config_list:
             menu = {'read_config': 'Прочитать конфигурацию с MegaD'}
 
@@ -152,7 +159,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                     async_get_clientsession(self.hass)
                 )
                 name_file = user_input.get('config_list')
-                file_path = str(os.path.join(PATH_CONFIG_MEGAD, name_file))
+                file_path = str(os.path.join(
+                    self.get_path_to_config(), name_file)
+                )
                 self.data['file_path'] = file_path
                 self.data['name_file'] = name_file
                 _LOGGER.debug(f'file_path: {file_path}')
@@ -184,7 +193,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
                 errors["base"] = "unknown"
 
-        config_list = await get_list_config_megad(name_file)
+        config_list = await get_list_config_megad(
+            name_file, self.get_path_to_config()
+        )
 
         return self.async_show_form(
             step_id='select_config',
@@ -208,7 +219,8 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 await async_read_configuration(
                     self.data['url'],
                     user_input.get('name_file'),
-                    async_get_clientsession(self.hass)
+                    async_get_clientsession(self.hass),
+                    self.get_path_to_config()
                 )
                 self.data['name_file'] = user_input.get('name_file')
                 return await self.async_step_select_config()
@@ -228,7 +240,6 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
 
     async def async_step_write_config(self, user_input=None):
         """Выбор конфигурации контроллера для записи в него"""
-
         errors: dict[str, str] = {}
         name_file = self.data.get('name_file', '')
 
@@ -238,7 +249,7 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 return await self.async_step_get_config()
             try:
                 name_file = user_input.get('config_list')
-                file_path = os.path.join(PATH_CONFIG_MEGAD, name_file)
+                file_path = os.path.join(self.get_path_to_config(), name_file)
                 _LOGGER.debug(f'file_path: {file_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
                 await write_config_megad(
@@ -252,8 +263,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
             except Exception as e:
                 _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
 
-        config_list = await get_list_config_megad(name_file)
-
+        config_list = await get_list_config_megad(
+            name_file, self.get_path_to_config()
+        )
         return self.async_show_form(
             step_id='write_config',
             data_schema=vol.Schema(

@@ -5,8 +5,6 @@ from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 
 from homeassistant.components.http import HomeAssistantView
-# from .. import MegaDCoordinator
-
 from ..const import DOMAIN, ENTRIES
 
 _LOGGER = logging.getLogger(__name__)
