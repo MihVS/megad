@@ -15,7 +15,7 @@ from .const import (
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
-    I2CSensorSTH31
+    I2CSensorSTH31, AnalogSensor
 )
 from .core.megad import MegaD
 
@@ -80,6 +80,9 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id_hum, HUMIDITY)
             )
+        if isinstance(port, AnalogSensor):
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+            sensors.append(AnalogSensorMegaD(coordinator, port, unique_id))
 
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{TEMPERATURE}', TEMPERATURE)
@@ -291,3 +294,44 @@ class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):
     @cached_property
     def device_class(self) -> str | None:
         return SENSOR_CLASS.get(self.type_sensor)
+
+
+class AnalogSensorMegaD(CoordinatorEntity, SensorEntity):
+
+    _attr_icon = 'mdi:alpha-a-circle-outline'
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: AnalogSensor,
+            unique_id: str, type_sensor: str | None = None
+    ) -> None:
+        super().__init__(coordinator)
+        self._megad: MegaD = coordinator.megad
+        self._port: AnalogSensor = port
+        self.type_sensor = type_sensor
+        self._sensor_name: str = port.conf.name
+        self._unique_id: str = unique_id
+        self._attr_device_info = coordinator.devices_info()
+        self.entity_id = f'sensor.{self._megad.id}_port{port.conf.id}_analog'
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Sensor entity {self.entity_id}>"
+        return super().__repr__()
+
+    @cached_property
+    def name(self) -> str:
+        return self._sensor_name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @cached_property
+    def state_class(self) -> SensorStateClass | str | None:
+        """Return the state class of this entity, if any."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> float | str:
+        """Возвращает состояние сенсора"""
+        return self._port.state

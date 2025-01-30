@@ -8,7 +8,7 @@ from .exceptions import (
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
-    OneWireBusSensorConfig, I2CConfig
+    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -521,3 +521,43 @@ class I2CSensorSTH31(TempHumSensor):
     def __init__(self, conf: I2CConfig, megad_id):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
+
+
+class AnalogSensor(BasePort):
+    """Класс для аналоговых сенсоров"""
+
+    def __init__(self, conf: AnalogPortConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: AnalogPortConfig = conf
+        self._state: int = 0
+
+    def update_state(self, data: str):
+        """
+        data: 224
+        """
+        try:
+            if data.isdigit():
+                self._state = data
+            elif data.lower() == PLC_BUSY:
+                raise PortBusy
+            elif data.lower() == PORT_OFF:
+                raise PortOFFError
+            else:
+                raise UpdateStateError
+
+        except PortBusy:
+            _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
+                         f'обновить данные порта id={self.conf.id}, '
+                         f'Ответ = {data}')
+        except PortOFFError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Порт не настроен! '
+                            f'Проверьте настройки порта id={self.conf.id}, '
+                            f'Ответ = {data}')
+        except UpdateStateError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта sensor '
+                            f'(id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')
