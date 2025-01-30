@@ -353,9 +353,9 @@ class DigitalSensorBase(BasePort):
 
     def short_data(self, data):
         """Прописать правильную обработку короткого вида записи данных"""
-        _LOGGER.warning(f'Megad id={self.megad_id}. Получен сокращённый '
-                        f'вариант ответа от контроллера.'
-                        f' Порт {self.conf.id}, значение: {data}')
+        _LOGGER.info(f'Megad id={self.megad_id}. Получен сокращённый '
+                     f'вариант ответа от контроллера.'
+                     f' Порт {self.conf.id}, значение: {data}')
 
     def check_type_sensor(self, data):
         """Проверка типа сенсора по полученным данным"""
@@ -377,9 +377,9 @@ class DigitalSensorBase(BasePort):
         except ValueError:
             self.short_data(data)
         except PortBusy:
-            _LOGGER.warning(f'Megad id={self.megad_id}. Неуспешная попытка '
-                            f'обновить данные порта id={self.conf.id}, '
-                            f'Ответ = {data}')
+            _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
+                         f'обновить данные порта id={self.conf.id}, '
+                         f'Ответ = {data}')
         except PortOFFError:
             _LOGGER.warning(f'Megad id={self.megad_id}. Порт не настроен! '
                             f'Проверьте настройки порта id={self.conf.id}, '

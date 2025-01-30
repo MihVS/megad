@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from http import HTTPStatus
 from typing import Union
@@ -23,7 +24,7 @@ from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
-    LIST_STATES, SCL_PORT, I2C_DEVICE
+    LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class MegaD:
         self.uptime: int = 0
         self.temperature: float = 0
         self.software: str | None = None
+        self.request_count: int = COUNT_UPDATE
         self.init_ports()
         _LOGGER.debug(f'Создан объект MegaD: {self}')
 
@@ -78,15 +80,25 @@ class MegaD:
         """Обновление всех данных контроллера."""
 
         await self.update_ports()
-        page_cf0 = await async_get_page_config(
-            START_CONFIG, self.url, self.session
-        )
+        if self.request_count == COUNT_UPDATE:
+            self.request_count = 0
+            await asyncio.sleep(TIME_SLEEP_REQUEST)
+            page_cf0 = await async_get_page_config(
+                START_CONFIG, self.url, self.session
+            )
+            self.software = get_version_software(page_cf0)
+            _LOGGER.debug(f'Версия ПО контроллера id:'
+                          f'{self.id}: {self.software}')
+        await asyncio.sleep(TIME_SLEEP_REQUEST)
         page_cf1 = await async_get_page_config(
             MAIN_CONFIG, self.url, self.session
         )
         self.uptime = get_uptime(page_cf1)
+        _LOGGER.debug(f'Время работы контроллера id:{self.id}: {self.uptime}')
         self.temperature = get_temperature_megad(page_cf1)
-        self.software = get_version_software(page_cf0)
+        _LOGGER.debug(f'Температура платы контролера '
+                      f'id:{self.id}: {self.temperature}')
+        self.request_count += 1
 
     async def update_ports(self):
         """Обновление данных настроенных портов"""
@@ -97,9 +109,11 @@ class MegaD:
             if state:
                 port.update_state(state)
             elif isinstance(port, OneWireBusSensorPort):
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
             elif isinstance(port, I2CSensorSCD4x):
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
                 state = await self.get_status_scd4x(port)
                 port.update_state(state)
 
