@@ -75,7 +75,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
 
     def get_path_to_config(self) -> str:
         """Возвращает путь до каталога с настройками контроллера"""
-        return self.hass.config.path(PATH_CONFIG_MEGAD)
+        config_path = self.hass.config.path(PATH_CONFIG_MEGAD)
+        os.makedirs(config_path, exist_ok=True)
+        return config_path
 
     def data_schema_main(self):
         return vol.Schema(

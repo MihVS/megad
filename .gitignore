@@ -12,5 +12,4 @@ scripts.yaml
 secrets.yaml
 __pycache__
 /custom_components/megad/temp_data/
-/custom_components/config_megad/*
-!.gitkeep
+/custom_components/config_megad/
