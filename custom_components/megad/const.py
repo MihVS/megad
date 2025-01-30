@@ -18,7 +18,7 @@ TIME_SLEEP_REQUEST = 0.2
 COUNT_UPDATE = 60
 COUNTER_CONNECT = 0
 
-PATH_CONFIG_MEGAD = 'custom_components/megad/config_megad/'
+PATH_CONFIG_MEGAD = 'custom_components/config_megad/'
 
 # Значения по умолчанию
 DEFAULT_IP = '192.168.0.14'
