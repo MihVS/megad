@@ -80,6 +80,7 @@ class BinaryPortIn(BinaryPort):
         """
         data: ON
         data: OFF/7
+        data: {'pt': '1', 'm': '1', 'cnt': '6', 'mdid': '55555'}
         data: {'pt': '1', 'm': '2', 'cnt': '7', 'mdid': '55555'}
         """
         state = self._state
@@ -106,7 +107,9 @@ class BinaryPortIn(BinaryPort):
                     case '1':
                         state = False
                     case '2':
-                        state = self.state
+                        state = (
+                            not self.state if self.conf.inverse else self.state
+                        )
                     case _:
                         state = True
             else:

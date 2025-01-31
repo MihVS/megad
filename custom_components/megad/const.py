@@ -62,6 +62,11 @@ LIST_STATES = 'list'
 SCL_PORT = 'scl'
 I2C_DEVICE = 'i2c_dev'
 
+# Параметры ответа MegaD
+MEGAD_ID = 'mdid'
+MEGAD_STATE = 'st'
+PORT_ID = 'pt'
+
 StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
 STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")
 

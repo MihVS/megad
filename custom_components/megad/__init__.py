@@ -11,7 +11,7 @@ from .const import (
     PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS
 )
 from .core.config_parser import create_config_megad
-from .core.enums import ModeInMegaD
+from .core.enums import ModeInMegaD, TypePortMegaD
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD
 from .core.server import MegadHttpView
@@ -136,6 +136,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
         port = self.megad.get_port(port_id)
         if port is None:
             return
+        if port.conf.type_port in (TypePortMegaD.DSEN, TypePortMegaD.ADC):
+            return
         if port.conf.mode == ModeInMegaD.C:
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
@@ -148,6 +150,16 @@ class MegaDCoordinator(DataUpdateCoordinator):
         for port_id, state in port_states.items():
             self.megad.update_port(port_id, state)
         self.hass.loop.call_soon(self.async_update_listeners)
+
+    async def restore_status_ports(self):
+        """Восстановление состояния портов после перезагрузки контроллера"""
+        for port in self.megad.ports:
+            if port.conf.type_port == TypePortMegaD.OUT:
+                _LOGGER.info(f'Восстановление состояния порта {port.conf.id}')
+                _LOGGER.debug(f'port_state: {port.state}')
+                await self.megad.set_port(port.conf.id, int(port.state))
+        await asyncio.sleep(1)
+        await self.megad.update_data()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

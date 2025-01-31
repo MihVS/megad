@@ -5,7 +5,7 @@ from aiohttp.web_request import Request
 from aiohttp.web_response import Response
 
 from homeassistant.components.http import HomeAssistantView
-from ..const import DOMAIN, ENTRIES
+from ..const import DOMAIN, ENTRIES, MEGAD_ID, MEGAD_STATE, PORT_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,8 +25,9 @@ class MegadHttpView(HomeAssistantView):
         _LOGGER.debug(f'MegaD request: {params}')
         hass = request.app['hass']
         entry_ids = hass.data[DOMAIN][ENTRIES]
-        id_megad = params.get('mdid')
-        port_id = params.get('pt')
+        id_megad = params.get(MEGAD_ID)
+        state_megad = params.get(MEGAD_STATE)
+        port_id = params.get(PORT_ID)
         coordinator = None
         for entry_id in entry_ids:
             coordinator_temp = hass.data[DOMAIN][ENTRIES][entry_id]
@@ -36,6 +37,10 @@ class MegadHttpView(HomeAssistantView):
         if coordinator is None:
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')
             return Response(status=HTTPStatus.NOT_FOUND)
+
+        if state_megad is not None:
+            _LOGGER.info(f'megad-{id_megad} был перезагружен')
+            await coordinator.restore_status_ports()
 
         if port_id is not None:
             await coordinator.update_port_state(port_id=port_id, data=params)
