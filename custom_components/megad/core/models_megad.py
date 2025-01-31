@@ -263,7 +263,9 @@ class ModeControlSensorMixin(ActionPortMixin):
         return ModeSensorMegaD.get_value(value)
 
 
-class OneWireSensorConfig(PortSensorConfig, ModeControlSensorMixin):
+class OneWireSensorConfig(
+    PortSensorConfig, ModeControlSensorMixin, InverseValueMixin
+):
     """Сенсор температурный 1 wire"""
 
 

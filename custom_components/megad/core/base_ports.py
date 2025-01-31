@@ -564,3 +564,5 @@ class AnalogSensor(BasePort):
             _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
+
+# {'pt': '38', 'v': '2712', 'dir': '1', 'mdid': '44'}

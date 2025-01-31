@@ -155,8 +155,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
         """Восстановление состояния портов после перезагрузки контроллера"""
         for port in self.megad.ports:
             if port.conf.type_port == TypePortMegaD.OUT:
-                _LOGGER.info(f'Восстановление состояния порта {port.conf.id}')
-                _LOGGER.debug(f'port_state: {port.state}')
                 await self.megad.set_port(port.conf.id, int(port.state))
         await asyncio.sleep(1)
         await self.megad.update_data()
