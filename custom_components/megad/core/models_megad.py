@@ -8,7 +8,7 @@ from .enums import (ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD,
                     TypePortMegaD, ModeInMegaD, DeviceClassBinary,
                     ModeOutMegaD, DeviceClassControl, TypeDSensorMegaD,
                     ModeSensorMegaD, ModeWiegandMegaD, ModeI2CMegaD,
-                    CategoryI2CMegaD, DeviceI2CMegaD)
+                    CategoryI2CMegaD, DeviceI2CMegaD, DeviceClassClimate)
 
 
 class SystemConfigMegaD(BaseModel):
@@ -264,9 +264,26 @@ class ModeControlSensorMixin(ActionPortMixin):
 
 
 class OneWireSensorConfig(
-    PortSensorConfig, ModeControlSensorMixin, InverseValueMixin
+    PortSensorConfig, DeviceClassConfig,
+    ModeControlSensorMixin, InverseValueMixin
 ):
     """Сенсор температурный 1 wire"""
+
+    device_class: DeviceClassClimate = DeviceClassClimate.HOME
+
+    @field_validator('device_class', mode='before')
+    def set_device_class(cls, value):
+        match value:
+            case DeviceClassClimate.HOME.value:
+                return DeviceClassClimate.HOME
+            case DeviceClassClimate.BOILER.value:
+                return DeviceClassClimate.BOILER
+            case DeviceClassClimate.CELLAR.value:
+                return DeviceClassClimate.CELLAR
+            case DeviceClassClimate.FLOOR.value:
+                return DeviceClassClimate.FLOOR
+            case _:
+                return DeviceClassClimate.HOME
 
 
 class OneWireBusSensorConfig(PortSensorConfig):

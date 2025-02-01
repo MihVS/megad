@@ -45,6 +45,12 @@ class InvalidPasswordMegad(HomeAssistantError):
     """Неверный пароль для контроллера"""
     pass
 
+class TemperatureOutOfRangeError(HomeAssistantError):
+    """Задана температура не в пределах допустимого диапазона."""
+
+class InvalidSettingPort(HomeAssistantError):
+    """Неправильно настроен порт."""
+
 
 class TypeSensorError(Exception):
     """Данные не соответствуют типу устройства"""

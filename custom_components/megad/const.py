@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+from config.custom_components.megad.core.enums import DeviceClassClimate
 from homeassistant.const import (
     UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime
 )
@@ -61,6 +62,12 @@ ALL_STATES = 'all'
 LIST_STATES = 'list'
 SCL_PORT = 'scl'
 I2C_DEVICE = 'i2c_dev'
+DIRECTION = 'dir'
+SET_TEMPERATURE = 'misc'
+
+# Значения запроса
+ON = 1
+OFF = 0
 
 # Параметры ответа MegaD
 MEGAD_ID = 'mdid'
@@ -87,6 +94,13 @@ SENSOR_CLASS = {
     UPTIME: SensorDeviceClass.DURATION
 }
 
+TEMPERATURE_CONDITION = {
+    DeviceClassClimate.HOME: (5, 30),
+    DeviceClassClimate.BOILER: (35, 90),
+    DeviceClassClimate.CELLAR: (0, 20),
+    DeviceClassClimate.FLOOR: (15, 45)
+}
+
 STATE_RELAY = ['on', 'off', '1', '0']
 RELAY_ON = ['1', 'on']
 RELAY_OFF = ['0', 'off']
@@ -97,4 +111,5 @@ PLATFORMS = [
     'switch',
     'light',
     'fan',
+    'climate'
 ]

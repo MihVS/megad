@@ -24,7 +24,8 @@ from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
-    LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE
+    LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
+    SET_TEMPERATURE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -187,7 +188,6 @@ class MegaD:
 
     def update_port(self, port_id, data):
         """Обновить данные порта по его id"""
-
         port = self.get_port(port_id)
         if port:
             old_state = port.state
@@ -197,17 +197,31 @@ class MegaD:
 
     def get_port(self, port_id):
         """Получить порт по его id"""
-
         return next(
             (port for port in self.ports
              if port.conf.id == int(port_id)),
             None
         )
 
+    async def set_temperature(self, port_id, temperature):
+        """Установка заданной температуры терморегулятора."""
+        params = {PORT: port_id, SET_TEMPERATURE: temperature}
+        async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+            response = await self.session.get(url=self.url, params=params)
+
+        text = await response.text()
+        match text:
+            case 'busy':
+                _LOGGER.warning(f'Не удалось изменить заданную температуру '
+                                f'порта №{port_id} на {temperature}')
+                raise PortBusy
+            case _:
+                _LOGGER.debug(f'Заданная температура порта №{port_id} '
+                              f'изменена на {temperature}')
+
     async def set_port(self, port_id, command):
         """Управление выходом релейным и шим"""
-
-        params = {'cmd': f'{port_id}:{command}'}
+        params = {COMMAND: f'{port_id}:{command}'}
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
             response = await self.session.get(url=self.url, params=params)
 

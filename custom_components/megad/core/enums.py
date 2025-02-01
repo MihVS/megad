@@ -147,6 +147,15 @@ class DeviceClassControl(Enum):
     FAN = 'f'
 
 
+class DeviceClassClimate(Enum):
+    """Класс температурных режимов термостата в Home Assistant"""
+
+    HOME = 'h'
+    BOILER = 'b'
+    CELLAR = 'c'
+    FLOOR = 'f'
+
+
 class TypeDSensorMegaD(EnumMegaD):
     """Типы настройки Mode выходов TypeDSensorMegaD"""
 

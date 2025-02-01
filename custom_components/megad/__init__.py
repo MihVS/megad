@@ -10,8 +10,10 @@ from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
     PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS
 )
+from .core.base_ports import OneWireSensorPort
 from .core.config_parser import create_config_megad
 from .core.enums import ModeInMegaD, TypePortMegaD
+from .core.exceptions import InvalidSettingPort
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD
 from .core.server import MegadHttpView
@@ -136,13 +138,22 @@ class MegaDCoordinator(DataUpdateCoordinator):
         port = self.megad.get_port(port_id)
         if port is None:
             return
-        if port.conf.type_port in (TypePortMegaD.DSEN, TypePortMegaD.ADC):
+        if port.conf.type_port in (TypePortMegaD.ADC, ):
             return
         if port.conf.mode == ModeInMegaD.C:
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
             self.megad.update_port(port_id, data)
             self.hass.loop.call_soon(self.async_update_listeners)
+
+    def update_set_temperature(self, port_id, temperature):
+        """Обновление заданной температуры порта сенсора"""
+        port = self.megad.get_port(port_id)
+        if isinstance(port, OneWireSensorPort):
+            port.conf.set_value = temperature
+            self.hass.loop.call_soon(self.async_update_listeners)
+        else:
+            raise InvalidSettingPort(f'Проверьте настройки порта №{port_id}')
 
     def update_group_state(self, port_states: dict[int, str]):
         """Обновление состояний портов в группе"""
