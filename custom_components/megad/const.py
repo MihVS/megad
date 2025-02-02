@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from config.custom_components.megad.core.enums import DeviceClassClimate
+from .core.enums import DeviceClassClimate
 from homeassistant.const import (
     UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime
 )
@@ -16,7 +16,7 @@ TIME_UPDATE = 60
 TIME_OUT_UPDATE_DATA = 5
 TIME_SLEEP_REQUEST = 0.2
 
-COUNT_UPDATE = 60
+COUNT_UPDATE = 20
 COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = 'custom_components/config_megad/'
@@ -64,6 +64,7 @@ SCL_PORT = 'scl'
 I2C_DEVICE = 'i2c_dev'
 DIRECTION = 'dir'
 SET_TEMPERATURE = 'misc'
+CONFIG = 'cf'
 
 # Значения запроса
 ON = 1

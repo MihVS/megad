@@ -17,7 +17,7 @@ from .models_megad import (
     AnalogPortConfig, SystemConfigMegaD
 )
 from ..const import (
-    TITLE_MEGAD, NAME_SCRIPT_MEGAD
+    TITLE_MEGAD, NAME_SCRIPT_MEGAD, CONFIG, PORT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,18 +31,42 @@ async def async_fetch_page(url: str, session: aiohttp.ClientSession) -> str:
         return await response.text(encoding='cp1251')
 
 
-async def async_get_page_config(
-        cf: int, url: str, session: aiohttp.ClientSession) -> str:
+async def async_get_page(
+        param: str, value: int, url: str, session: aiohttp.ClientSession
+) -> str:
     """Получение страницы конфигурации контроллера"""
-
-    async with session.get(url=url, params={'cf': cf}) as response:
+    async with session.get(url=url, params={param: value}) as response:
         response.raise_for_status()
         return await response.text(encoding='windows-1251')
 
 
+async def async_get_page_port(
+        port_id: int, url: str, session: aiohttp.ClientSession) -> str:
+    """Получение страницы конфигурации порта контроллера"""
+    return await async_get_page(PORT, port_id, url, session)
+
+
+async def async_get_page_config(
+        cf: int, url: str, session: aiohttp.ClientSession) -> str:
+    """Получение страницы конкретной конфигурации контроллера"""
+    return await async_get_page(CONFIG, cf, url, session)
+
+
+def get_status_thermostat(page: str) -> bool:
+    """Получает включенное состояние порта термостата"""
+    soup = BeautifulSoup(page, 'lxml')
+    select_mode = soup.find('select', {'name': 'm'})
+    return True if 'DIS' in select_mode.next_sibling else False
+
+
+def get_set_temp_thermostat(page: str) -> float:
+    """Получить установленную температуру термостата"""
+    soup = BeautifulSoup(page, 'lxml')
+    val_input = soup.find('input', {'name': 'misc'})
+    return float(val_input.get('value'))
+
 def get_uptime(page_cf: str) -> int:
     """Получить время работы контроллера в минутах"""
-
     soup = BeautifulSoup(page_cf, 'lxml')
     uptime_text = soup.find(string=lambda text: "Uptime" in text)
     if uptime_text:

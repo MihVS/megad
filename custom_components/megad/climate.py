@@ -11,7 +11,7 @@ import logging
 from propcache import cached_property
 
 from homeassistant.components.climate import (
-    HVACMode, ClimateEntity, ClimateEntityFeature
+    HVACMode, ClimateEntity, ClimateEntityFeature, HVACAction
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
@@ -24,7 +24,6 @@ from .const import (
     OFF, ON
 )
 from .core.base_ports import OneWireSensorPort
-from .core.enums import ModeSensorMegaD
 from .core.exceptions import TemperatureOutOfRangeError
 from .core.megad import MegaD
 
@@ -42,15 +41,11 @@ async def async_setup_entry(
 
     thermostats = []
     for port in megad.ports:
-        if isinstance(port, OneWireSensorPort):
-            if (
-                    port.conf.mode == ModeSensorMegaD.LESS_AND_MORE
-                    and port.conf.execute_action
-            ):
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-climate'
-                thermostats.append(OneWireClimateEntity(
-                    coordinator, port, unique_id)
-                )
+        if megad.check_port_is_thermostat(port):
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-climate'
+            thermostats.append(OneWireClimateEntity(
+                coordinator, port, unique_id)
+            )
     for thermostat in thermostats:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             thermostat.unique_id)
@@ -63,12 +58,7 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     """Нагревательный терморегулятор"""
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_min_temp = 0
-    _attr_max_temp = 40
-    _attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE |
-            ClimateEntityFeature.PRESET_MODE
-    )
+    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
 
     def __init__(
             self, coordinator: MegaDCoordinator, port: OneWireSensorPort,
@@ -114,27 +104,31 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def target_temperature(self):
         """Возвращает целевую температуру."""
-        return self._port.conf.set_value
+        if self._attr_hvac_mode == HVACMode.OFF:
+            return None
+        return float(self._port.conf.set_value)
 
     @property
     def current_temperature(self):
         """Возвращает текущую температуру."""
-        return self._port.state[TEMPERATURE]
+        return float(self._port.state[TEMPERATURE])
 
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        if not self._port.status:
-            return HVACMode.HEAT
-        return HVACMode.OFF
+        _LOGGER.warning(self._port.direction)
+        if not self._port.direction:
+            return HVACAction.HEATING
+        return HVACAction.IDLE
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Устанавливает режим HVAC."""
-        self._port.status = True if hvac_mode == HVACMode.HEAT else False
-        if hvac_mode == HVACMode.OFF:
-            await self._megad.set_port(self._port.conf.id, OFF)
-        else:
+        if hvac_mode == HVACMode.HEAT:
             await self._megad.set_port(self._port.conf.id, ON)
+            self._port.status = True
+        else:
+            await self._megad.set_port(self._port.conf.id, OFF)
+            self._port.status = False
         self.schedule_update_ha_state()
 
     async def async_set_temperature(self, **kwargs):
@@ -142,7 +136,7 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
         set_temp = kwargs.get('temperature')
         if self._attr_min_temp <= set_temp <= self._attr_max_temp:
             await self._megad.set_temperature(self._port.conf.id, set_temp)
-            await self._coordinator.update_set_temperature(
+            self._coordinator.update_set_temperature(
                 self._port.conf.id, set_temp
             )
         else:

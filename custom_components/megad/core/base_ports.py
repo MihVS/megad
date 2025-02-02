@@ -418,8 +418,7 @@ class OneWireSensorPort(DigitalSensorBase):
         """
         if isinstance(raw_data, dict):
             self.direction = bool(raw_data.get(DIRECTION))
-            self.status = True
-            value = raw_data.get(VALUE)/100
+            value = int(raw_data.get(VALUE))/100
             return {TEMPERATURE: value}
         else:
             return super().get_states(raw_data)

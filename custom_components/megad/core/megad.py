@@ -14,11 +14,12 @@ from .base_ports import (
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
-    get_version_software
+    get_version_software, async_get_page_port, get_set_temp_thermostat,
+    get_status_thermostat
 )
 from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
-    ModeI2CMegaD
+    ModeI2CMegaD, ModeSensorMegaD
 )
 from .exceptions import PortBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD
@@ -101,12 +102,31 @@ class MegaD:
                       f'id:{self.id}: {self.temperature}')
         self.request_count += 1
 
+    @staticmethod
+    def check_port_is_thermostat(port) -> bool:
+        """Проверка является ли порт термостатом"""
+        if isinstance(port, OneWireSensorPort):
+            if (
+                    port.conf.mode == ModeSensorMegaD.LESS_AND_MORE
+                    and port.conf.execute_action
+            ):
+                return True
+        else:
+            return False
+
     async def update_ports(self):
         """Обновление данных настроенных портов"""
         status_ports_raw = await self.get_status_ports()
         status_ports = status_ports_raw.split(';')
         for port in self.ports:
             state = status_ports[port.conf.id]
+            if self.check_port_is_thermostat(port):
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
+                page = await async_get_page_port(
+                    port.conf.id, self.url, self.session
+                )
+                port.status = get_status_thermostat(page)
+                port.conf.set_value = get_set_temp_thermostat(page)
             if state:
                 port.update_state(state)
             elif isinstance(port, OneWireBusSensorPort):
