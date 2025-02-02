@@ -92,6 +92,7 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode | None:
         """Return hvac operation ie. heat, cool mode."""
+        _LOGGER.warning(f'status: {self._port.status}')
         if self._port.status:
             return HVACMode.HEAT
         return HVACMode.OFF
@@ -104,9 +105,8 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def target_temperature(self):
         """Возвращает целевую температуру."""
-        if self._attr_hvac_mode == HVACMode.OFF:
-            return None
-        return float(self._port.conf.set_value)
+        if self._port.status:
+            return float(self._port.conf.set_value)
 
     @property
     def current_temperature(self):
@@ -116,7 +116,7 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        _LOGGER.warning(self._port.direction)
+        _LOGGER.warning(f'action: {self._port.direction}')
         if not self._port.direction:
             return HVACAction.HEATING
         return HVACAction.IDLE

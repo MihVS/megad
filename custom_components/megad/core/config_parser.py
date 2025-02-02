@@ -56,7 +56,7 @@ def get_status_thermostat(page: str) -> bool:
     """Получает включенное состояние порта термостата"""
     soup = BeautifulSoup(page, 'lxml')
     select_mode = soup.find('select', {'name': 'm'})
-    return True if 'DIS' in select_mode.next_sibling else False
+    return False if 'DIS' in select_mode.next_sibling else True
 
 
 def get_set_temp_thermostat(page: str) -> float:

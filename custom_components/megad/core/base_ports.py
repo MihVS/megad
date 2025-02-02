@@ -12,7 +12,8 @@ from .models_megad import (
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
-    TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION
+    TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
+    PORT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -408,20 +409,29 @@ class OneWireSensorPort(DigitalSensorBase):
     def __init__(self, conf: OneWireSensorConfig, megad_id):
         super().__init__(conf, megad_id)
         self.conf: OneWireSensorConfig = conf
-        self.direction: bool = False
-        self.status: bool = True
+        self._state.update({DIRECTION: False, STATUS_THERMO: True})
+        # self.direction: bool = False
+        # self.status: bool = True
 
     def get_states(self, raw_data: str) -> dict:
         """
         data: temp:24
               {'pt': '38', 'v': '2712', 'dir': '1', 'mdid': '44'}
         """
+        state = self._state
         if isinstance(raw_data, dict):
-            self.direction = bool(raw_data.get(DIRECTION))
-            value = int(raw_data.get(VALUE))/100
-            return {TEMPERATURE: value}
+            if raw_data.get(PORT) is None:
+                state.update(raw_data)
+                return state
+            else:
+                direction = bool(raw_data.get(DIRECTION))
+                value = int(raw_data.get(VALUE))/100
+                state.update({TEMPERATURE: value, DIRECTION: direction})
+                return state
         else:
-            return super().get_states(raw_data)
+            state_temperature = super().get_states(raw_data)
+            state.update(state_temperature)
+            return state
 
     def check_type_sensor(self, data):
         """Проверка что данные относятся к порту настроенного как 1 wire"""

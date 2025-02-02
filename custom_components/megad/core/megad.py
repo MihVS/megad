@@ -125,8 +125,13 @@ class MegaD:
                 page = await async_get_page_port(
                     port.conf.id, self.url, self.session
                 )
-                port.status = get_status_thermostat(page)
-                port.conf.set_value = get_set_temp_thermostat(page)
+                status = get_status_thermostat(page)
+                set_temperature = get_set_temp_thermostat(page)
+                port.status = status
+                port.conf.set_value = set_temperature
+                _LOGGER.debug(f'Состояние терморегулятора порта '
+                              f'№{port.conf.id}: статус - {status}, заданная'
+                              f'температура - {set_temperature}')
             if state:
                 port.update_state(state)
             elif isinstance(port, OneWireBusSensorPort):

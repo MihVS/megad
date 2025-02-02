@@ -42,6 +42,8 @@ TYPE_SENSOR_RUS = {
     CO2: 'CO2'
 }
 
+STATUS_THERMO = 'status_thermo'
+
 PLC_BUSY = 'busy'
 PORT_OFF = 'off'
 
