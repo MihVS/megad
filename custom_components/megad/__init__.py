@@ -4,8 +4,13 @@ from datetime import timedelta
 
 import async_timeout
 
-from homeassistant.helpers.entity_registry import async_get
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_registry import async_get
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator, UpdateFailed
+)
 from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
     PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS
@@ -17,12 +22,6 @@ from .core.exceptions import InvalidSettingPort
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD
 from .core.server import MegadHttpView
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator, UpdateFailed
-)
-
 
 _LOGGER = logging.getLogger(__name__)
 

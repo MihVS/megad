@@ -264,7 +264,7 @@ class ModeControlSensorMixin(ActionPortMixin):
 
 
 class OneWireSensorConfig(
-    PortSensorConfig, DeviceClassConfig,
+    DeviceClassConfig, PortSensorConfig,
     ModeControlSensorMixin, InverseValueMixin
 ):
     """Сенсор температурный 1 wire"""

@@ -6,17 +6,16 @@
 Условие создание термостата настройки поля Mode и галочка поля Action
 Не забыть реализовать восстановление заданной температуры после перезагрузки
 """
-import asyncio
 import logging
 
 from propcache import cached_property
 
 from homeassistant.components.climate import (
-    HVACMode, ClimateEntity, ClimateEntityFeature, HVACAction, PRESET_NONE
+    HVACMode, ClimateEntity, ClimateEntityFeature
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
