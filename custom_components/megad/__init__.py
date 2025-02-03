@@ -13,7 +13,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
-    PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS
+    PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS, STATUS_THERMO, TIME_SLEEP_REQUEST,
+    OFF
 )
 from .core.base_ports import OneWireSensorPort
 from .core.config_parser import create_config_megad
@@ -22,6 +23,7 @@ from .core.exceptions import InvalidSettingPort
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD
 from .core.server import MegadHttpView
+from .core.utils import get_action_turnoff
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -161,13 +163,26 @@ class MegaDCoordinator(DataUpdateCoordinator):
             self.megad.update_port(port_id, state)
         self.hass.loop.call_soon(self.async_update_listeners)
 
+    async def restore_thermo(self, port):
+        """Восстановление состояния терморегулятора после перезагрузки плк"""
+        await self.megad.set_temperature(
+            port.conf.id, port.conf.set_value
+        )
+        if not port.state[STATUS_THERMO]:
+            await asyncio.sleep(TIME_SLEEP_REQUEST)
+            await self.megad.set_port(port.conf.id, OFF)
+            await self.megad.send_command(get_action_turnoff(port.conf.action))
+
     async def restore_status_ports(self):
         """Восстановление состояния портов после перезагрузки контроллера"""
         for port in self.megad.ports:
             if port.conf.type_port == TypePortMegaD.OUT:
                 await self.megad.set_port(port.conf.id, int(port.state))
+            if self.megad.check_port_is_thermostat(port):
+                await self.restore_thermo(port)
         await asyncio.sleep(1)
         await self.megad.update_data()
+        self.hass.loop.call_soon(self.async_update_listeners)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

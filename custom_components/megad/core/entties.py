@@ -2,12 +2,11 @@ import logging
 
 from propcache import cached_property
 
-from .. import MegaDCoordinator
-from ..const import PORT_COMMAND
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .base_ports import ReleyPortOut
 from .megad import MegaD
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
+from .. import MegaDCoordinator
+from ..const import PORT_COMMAND
 
 _LOGGER = logging.getLogger(__name__)
 

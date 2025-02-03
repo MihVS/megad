@@ -99,7 +99,7 @@ SENSOR_CLASS = {
 
 TEMPERATURE_CONDITION = {
     DeviceClassClimate.HOME: (5, 30),
-    DeviceClassClimate.BOILER: (35, 90),
+    DeviceClassClimate.BOILER: (30, 80),
     DeviceClassClimate.CELLAR: (0, 20),
     DeviceClassClimate.FLOOR: (15, 45)
 }

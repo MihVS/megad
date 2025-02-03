@@ -65,6 +65,8 @@ class MegaD:
     async def get_status(self, params: dict) -> str:
         """Получение статуса по переданным параметрам"""
         response = await self.session.get(url=self.url, params=params)
+        _LOGGER.debug(f'Отправлен запрос контроллеру '
+                      f'id {self.id}: {params}')
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.error(f'Неверный пароль для устройства с id {self.id}')
             raise InvalidPasswordMegad(f'Проверьте пароль у устройства '
@@ -233,7 +235,8 @@ class MegaD:
         params = {PORT: port_id, SET_TEMPERATURE: temperature}
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
             response = await self.session.get(url=self.url, params=params)
-
+            _LOGGER.debug(f'Отправлен запрос контроллеру '
+                          f'id {self.id}: {params}')
         text = await response.text()
         match text:
             case 'busy':
@@ -249,7 +252,8 @@ class MegaD:
         params = {COMMAND: f'{port_id}:{command}'}
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
             response = await self.session.get(url=self.url, params=params)
-
+            _LOGGER.debug(f'Отправлен запрос контроллеру '
+                          f'id {self.id}: {params}')
         text = await response.text()
         match text:
             case 'busy':

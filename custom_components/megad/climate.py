@@ -1,7 +1,3 @@
-"""
-Сделать переключение статуса порта при выключении термостата.
-Не забыть реализовать восстановление заданной температуры после перезагрузки
-"""
 import logging
 
 from propcache import cached_property
@@ -115,9 +111,12 @@ class BaseClimateEntity(CoordinatorEntity, ClimateEntity):
             )
         else:
             await self._megad.set_port(self._port.conf.id, OFF)
-            await self._megad.send_command(
-                get_action_turnoff(self._port.conf.action)
-            )
+            actions_off = get_action_turnoff(self._port.conf.action)
+            await self._megad.send_command(actions_off)
+            for action in actions_off.split(';'):
+                if action:
+                    port_id, state = action.split(':')
+                    await self._coordinator.update_port_state(port_id, state)
             if HVACMode.COOL in self._attr_hvac_modes:
                 await self._coordinator.update_port_state(
                     self._port.conf.id, {DIRECTION: False}
