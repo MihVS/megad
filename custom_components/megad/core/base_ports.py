@@ -410,13 +410,12 @@ class OneWireSensorPort(DigitalSensorBase):
         super().__init__(conf, megad_id)
         self.conf: OneWireSensorConfig = conf
         self._state.update({DIRECTION: False, STATUS_THERMO: True})
-        # self.direction: bool = False
-        # self.status: bool = True
 
     def get_states(self, raw_data: str) -> dict:
         """
         data: temp:24
               {'pt': '38', 'v': '2712', 'dir': '1', 'mdid': '44'}
+              {'dir': True, 'status_thermo': False}
         """
         state = self._state
         if isinstance(raw_data, dict):
@@ -424,7 +423,7 @@ class OneWireSensorPort(DigitalSensorBase):
                 state.update(raw_data)
                 return state
             else:
-                direction = bool(raw_data.get(DIRECTION))
+                direction = bool(int(raw_data.get(DIRECTION)))
                 value = int(raw_data.get(VALUE))/100
                 state.update({TEMPERATURE: value, DIRECTION: direction})
                 return state
@@ -432,11 +431,6 @@ class OneWireSensorPort(DigitalSensorBase):
             state_temperature = super().get_states(raw_data)
             state.update(state_temperature)
             return state
-
-    def check_type_sensor(self, data):
-        """Проверка что данные относятся к порту настроенного как 1 wire"""
-        if not (TEMPERATURE in self._state):
-            raise TypeSensorError
 
     def short_data(self, data):
         """Обработка данных если температура получена одним числом"""

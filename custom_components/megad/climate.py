@@ -1,9 +1,5 @@
 """
-Нужно подумать как отслеживать статус включеного состояния и отключеного.
-И не забыть про инверсию (нагрев или охлаждение)
-Можно это делать по управляемому порту, а лучше ловить ответ от контроллера
-и менять статус.
-Условие создание термостата настройки поля Mode и галочка поля Action
+Сделать переключение статуса порта при выключении термостата.
 Не забыть реализовать восстановление заданной температуры после перезагрузки
 """
 import logging
@@ -21,11 +17,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, TEMPERATURE_CONDITION, TEMPERATURE,
-    OFF, ON
+    OFF, ON, STATUS_THERMO, DIRECTION
 )
 from .core.base_ports import OneWireSensorPort
 from .core.exceptions import TemperatureOutOfRangeError
 from .core.megad import MegaD
+from .core.utils import get_action_turnoff
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,9 +40,14 @@ async def async_setup_entry(
     for port in megad.ports:
         if megad.check_port_is_thermostat(port):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-climate'
-            thermostats.append(OneWireClimateEntity(
-                coordinator, port, unique_id)
-            )
+            if port.conf.inverse:
+                thermostats.append(CoolClimateEntity(
+                    coordinator, port, unique_id)
+                )
+            else:
+                thermostats.append(HeatClimateEntity(
+                    coordinator, port, unique_id)
+                )
     for thermostat in thermostats:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             thermostat.unique_id)
@@ -54,10 +56,9 @@ async def async_setup_entry(
         _LOGGER.debug(f'Добавлены термостаты: {thermostats}')
 
 
-class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
-    """Нагревательный терморегулятор"""
+class BaseClimateEntity(CoordinatorEntity, ClimateEntity):
+    """Базовый класс терморегулятора"""
 
-    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
 
     def __init__(
@@ -90,14 +91,6 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
         return self._unique_id
 
     @property
-    def hvac_mode(self) -> HVACMode | None:
-        """Return hvac operation ie. heat, cool mode."""
-        _LOGGER.warning(f'status: {self._port.status}')
-        if self._port.status:
-            return HVACMode.HEAT
-        return HVACMode.OFF
-
-    @property
     def temperature_unit(self):
         """Возвращает единицы измерения температуры."""
         return UnitOfTemperature.CELSIUS
@@ -105,7 +98,7 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def target_temperature(self):
         """Возвращает целевую температуру."""
-        if self._port.status:
+        if self._port.state.get(STATUS_THERMO):
             return float(self._port.conf.set_value)
 
     @property
@@ -113,23 +106,29 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
         """Возвращает текущую температуру."""
         return float(self._port.state[TEMPERATURE])
 
-    @property
-    def hvac_action(self):
-        """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        _LOGGER.warning(f'action: {self._port.direction}')
-        if not self._port.direction:
-            return HVACAction.HEATING
-        return HVACAction.IDLE
-
     async def async_set_hvac_mode(self, hvac_mode):
         """Устанавливает режим HVAC."""
-        if hvac_mode == HVACMode.HEAT:
+        if hvac_mode in (HVACMode.HEAT, HVACMode.COOL):
             await self._megad.set_port(self._port.conf.id, ON)
-            self._port.status = True
+            await self._coordinator.update_port_state(
+                self._port.conf.id, {STATUS_THERMO: True}
+            )
         else:
             await self._megad.set_port(self._port.conf.id, OFF)
-            self._port.status = False
-        self.schedule_update_ha_state()
+            await self._megad.send_command(
+                get_action_turnoff(self._port.conf.action)
+            )
+            if HVACMode.COOL in self._attr_hvac_modes:
+                await self._coordinator.update_port_state(
+                    self._port.conf.id, {DIRECTION: False}
+                )
+            else:
+                await self._coordinator.update_port_state(
+                    self._port.conf.id, {DIRECTION: True}
+                )
+            await self._coordinator.update_port_state(
+                self._port.conf.id, {STATUS_THERMO: False}
+            )
 
     async def async_set_temperature(self, **kwargs):
         """Устанавливает целевую температуру."""
@@ -146,3 +145,46 @@ class OneWireClimateEntity(CoordinatorEntity, ClimateEntity):
                 f'до {self._attr_max_temp} включительно.'
             )
 
+
+class HeatClimateEntity(BaseClimateEntity):
+    """Нагревательный терморегулятор"""
+
+    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
+
+    @property
+    def hvac_mode(self) -> HVACMode | None:
+        """Return hvac operation ie. heat, cool mode."""
+        status = self._port.state.get(STATUS_THERMO)
+        if status:
+            return HVACMode.HEAT
+        return HVACMode.OFF
+
+    @property
+    def hvac_action(self):
+        """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
+        direction = self._port.state.get(DIRECTION)
+        if not direction:
+            return HVACAction.HEATING
+        return HVACAction.IDLE
+
+
+class CoolClimateEntity(BaseClimateEntity):
+    """Охладительный терморегулятор"""
+
+    _attr_hvac_modes = [HVACMode.COOL, HVACMode.OFF]
+
+    @property
+    def hvac_mode(self) -> HVACMode | None:
+        """Return hvac operation ie. heat, cool mode."""
+        status = self._port.state.get(STATUS_THERMO)
+        if status:
+            return HVACMode.COOL
+        return HVACMode.OFF
+
+    @property
+    def hvac_action(self):
+        """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
+        direction = self._port.state.get(DIRECTION)
+        if direction:
+            return HVACAction.COOLING
+        return HVACAction.IDLE

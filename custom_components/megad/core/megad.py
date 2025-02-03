@@ -26,7 +26,7 @@ from .models_megad import DeviceMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
-    SET_TEMPERATURE
+    SET_TEMPERATURE, STATUS_THERMO
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ class MegaD:
                 )
                 status = get_status_thermostat(page)
                 set_temperature = get_set_temp_thermostat(page)
-                port.status = status
+                port.update_state({STATUS_THERMO: status})
                 port.conf.set_value = set_temperature
                 _LOGGER.debug(f'Состояние терморегулятора порта '
                               f'№{port.conf.id}: статус - {status}, заданная'
@@ -272,3 +272,8 @@ class MegaD:
                           f'изменил состояние с {old_state} на {new_state}')
             return True
         return False
+
+    async def send_command(self, action) -> None:
+        """Отправка команды на контроллер"""
+        params = {COMMAND: action}
+        await self.get_status(params)

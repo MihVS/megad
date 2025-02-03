@@ -11,3 +11,16 @@ async def get_list_config_megad(first_file='', path='') -> list:
         list_file.remove(first_file)
         list_file.insert(0, first_file)
     return list_file
+
+
+def get_action_turnoff(actions: str) -> str:
+    """Преобразует поле Action в команду выключения всех портов"""
+    new_actions = []
+    actions = actions.split(';')
+    for action in actions:
+        if ':' in action:
+            port, _ = action.split(':')
+            new_actions.append(f'{port}:0')
+    new_actions = list(set(new_actions))
+    return ';'.join(new_actions)
+
