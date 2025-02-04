@@ -24,6 +24,10 @@ class MegadHttpView(HomeAssistantView):
         params: dict = dict(request.query)
         _LOGGER.debug(f'MegaD request: {params}')
         hass = request.app['hass']
+        if hass.data.get(DOMAIN) is None:
+            _LOGGER.info(f'Интеграция загружается, запрос не обработан: '
+                         f'{params}')
+            return Response(status=HTTPStatus.NOT_FOUND)
         entry_ids = hass.data[DOMAIN][ENTRIES]
         id_megad = params.get(MEGAD_ID)
         state_megad = params.get(MEGAD_STATE)

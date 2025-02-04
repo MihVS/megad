@@ -161,10 +161,13 @@ class HeatClimateEntity(BaseClimateEntity):
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        direction = self._port.state.get(DIRECTION)
-        if not direction:
-            return HVACAction.HEATING
-        return HVACAction.IDLE
+        if self._port.state.get(STATUS_THERMO):
+            direction = self._port.state.get(DIRECTION)
+            if not direction:
+                return HVACAction.HEATING
+            return HVACAction.IDLE
+        else:
+            return HVACAction.OFF
 
 
 class CoolClimateEntity(BaseClimateEntity):
@@ -183,7 +186,10 @@ class CoolClimateEntity(BaseClimateEntity):
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        direction = self._port.state.get(DIRECTION)
-        if direction:
-            return HVACAction.COOLING
-        return HVACAction.IDLE
+        if self._port.state.get(STATUS_THERMO):
+            direction = self._port.state.get(DIRECTION)
+            if direction:
+                return HVACAction.COOLING
+            return HVACAction.IDLE
+        else:
+            return HVACAction.OFF
