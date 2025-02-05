@@ -71,7 +71,7 @@ class DeviceClassConfig(PortConfig):
 
     @model_validator(mode='before')
     def add_device_class(cls, data):
-        title = data.get('emt')
+        title = data.get('emt', '')
         if title.count('/') > 0:
             device_class = title.split('/')[1]
             data.update({'device_class': device_class})
@@ -85,7 +85,7 @@ class InverseValueMixin(DeviceClassConfig):
 
     @model_validator(mode='before')
     def add_inverse(cls, data):
-        title = data.get('emt')
+        title = data.get('emt', '')
         if title.count('/') > 1:
             inverse = title.split('/')[2]
             data.update({'inverse': inverse})
