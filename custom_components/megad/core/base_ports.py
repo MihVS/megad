@@ -544,6 +544,14 @@ class I2CSensorSTH31(TempHumSensor):
         self.conf: I2CConfig = conf
 
 
+class I2CSensorHTU21D(TempHumSensor):
+    """Класс для сенсора типа HTU21D I2C интерфейса"""
+
+    def __init__(self, conf: I2CConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: I2CConfig = conf
+
+
 class AnalogSensor(BasePort):
     """Класс для аналоговых сенсоров"""
 
@@ -583,4 +591,3 @@ class AnalogSensor(BasePort):
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
 
-# {'pt': '38', 'v': '2712', 'dir': '1', 'mdid': '44'}

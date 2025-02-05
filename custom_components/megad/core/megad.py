@@ -10,7 +10,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor
+    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -47,7 +47,7 @@ class MegaD:
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-            I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor
+            I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor
         ]] = []
         self.url = (f'http://{self.config.plc.ip_megad}/'
                     f'{self.config.plc.password}/')
@@ -208,6 +208,8 @@ class MegaD:
                         self.ports.append(I2CSensorSCD4x(port, self.id))
                     case DeviceI2CMegaD.SHT31:
                         self.ports.append(I2CSensorSTH31(port, self.id))
+                    case DeviceI2CMegaD.HTU21D:
+                        self.ports.append(I2CSensorHTU21D(port, self.id))
             elif port.type_port == TypePortMegaD.ADC:
                 self.ports.append(AnalogSensor(port, self.id))
 

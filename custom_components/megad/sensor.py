@@ -15,7 +15,7 @@ from .const import (
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
-    I2CSensorSTH31, AnalogSensor
+    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D
 )
 from .core.megad import MegaD
 
@@ -48,7 +48,7 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, TEMPERATURE)
             )
-        if isinstance(port, (DHTSensorPort, I2CSensorSTH31)):
+        if isinstance(port, (DHTSensorPort, I2CSensorSTH31, I2CSensorHTU21D)):
             unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                               f'{TEMPERATURE}')
             sensors.append(SensorMegaD(
