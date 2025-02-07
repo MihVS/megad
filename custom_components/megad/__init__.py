@@ -72,6 +72,8 @@ async def async_setup_entry(
     remove_entity(hass, current_entries_id, config_entry)
     _LOGGER.debug(f'Unique_id актуальных сущностей контроллера {megad.id}: '
                   f'{current_entries_id}')
+    _LOGGER.debug(f'Количество актуальных сущностей: '
+                  f'{len(current_entries_id)}')
     return True
 
 

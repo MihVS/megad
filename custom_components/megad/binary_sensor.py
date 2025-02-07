@@ -30,7 +30,7 @@ async def async_setup_entry(
     binary_sensors = []
     for port in megad.ports:
         if isinstance(port, BinaryPortIn):
-            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-binary'
             binary_sensors.append(BinarySensorMegaD(
                 coordinator, port, unique_id)
             )

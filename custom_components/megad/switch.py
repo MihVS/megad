@@ -31,7 +31,7 @@ async def async_setup_entry(
     for port in megad.ports:
         if isinstance(port, ReleyPortOut):
             if port.conf.device_class == DeviceClassControl.SWITCH:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-switch'
                 switches.append(SwitchMegaD(
                     coordinator, port, unique_id)
                 )

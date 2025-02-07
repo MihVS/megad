@@ -31,13 +31,13 @@ async def async_setup_entry(
     for port in megad.ports:
         if isinstance(port, ReleyPortOut):
             if port.conf.device_class == DeviceClassControl.FAN:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-fan'
                 fans.append(FanMegaD(
                     coordinator, port, unique_id)
                 )
         if isinstance(port, PWMPortOut):
             if port.conf.device_class == DeviceClassControl.FAN:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-fan'
                 fans.append(FanWMMegaD(
                     coordinator, port, unique_id)
                 )

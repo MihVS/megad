@@ -34,7 +34,7 @@ async def async_setup_entry(
     sensors = []
     for port in megad.ports:
         if isinstance(port, BinaryPortClick):
-            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-click'
             sensors.append(ClickSensorMegaD(
                 coordinator, port, unique_id)
             )
@@ -44,7 +44,7 @@ async def async_setup_entry(
                 coordinator, port, unique_id)
             )
         if isinstance(port, OneWireSensorPort):
-            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-1wire'
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, TEMPERATURE)
             )
@@ -81,7 +81,7 @@ async def async_setup_entry(
                 coordinator, port, unique_id_hum, HUMIDITY)
             )
         if isinstance(port, AnalogSensor):
-            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'
             sensors.append(AnalogSensorMegaD(coordinator, port, unique_id))
 
     sensors.append(SensorDeviceMegaD(

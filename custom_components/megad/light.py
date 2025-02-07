@@ -30,13 +30,13 @@ async def async_setup_entry(
     for port in megad.ports:
         if isinstance(port, ReleyPortOut):
             if port.conf.device_class == DeviceClassControl.LIGHT:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-light'
                 lights.append(LightRelayMegaD(
                     coordinator, port, unique_id)
                 )
         if isinstance(port, PWMPortOut):
             if port.conf.device_class == DeviceClassControl.LIGHT:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}'
+                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}--light'
                 lights.append(LightPWMMegaD(
                     coordinator, port, unique_id)
                 )

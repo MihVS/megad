@@ -41,6 +41,19 @@ class SystemConfigMegaD(BaseModel):
         return new_value
 
 
+class ThermostatConfig(BaseModel):
+    """Класс для ПИД терморегуляторов."""
+
+    id: int = Field(alias='pid')
+    title: str = Field(alias='pidt')
+    input: int = Field(alias='pidi')
+    output: int = Field(alias='pido')
+    set_point: float = Field(alias='pidsp')
+    p_factor: float = Field(alias='pidpf')
+    i_factor: float = Field(alias='pidif')
+    d_factor: float = Field(alias='piddf')
+
+
 class PortConfig(BaseModel):
     """Базовый класс для всех портов"""
 
@@ -344,6 +357,7 @@ class AnalogPortConfig(PortConfig, ModeControlSensorMixin):
 
 class DeviceMegaD(BaseModel):
     plc: SystemConfigMegaD
+    thermostats: list[ThermostatConfig] = []
     ports: list[Union[
         PortConfig, PortInConfig, PortOutConfig, PortOutRelayConfig,
         PortOutPWMConfig, PortSensorConfig, OneWireSensorConfig,
