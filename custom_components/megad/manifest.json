@@ -1,13 +1,13 @@
 {
   "domain": "megad",
   "name": "MegaD-2561",
-  "documentation": "https://github.com/mihvs/megad",
-  "issue_tracker": "https://github.com/mihvs/megad/issues",
   "codeowners": ["@mihvs"],
   "config_flow": true,
+  "dependencies": ["http", "zeroconf"],
+  "documentation": "https://github.com/mihvs/megad",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "dependencies": ["http", "zeroconf"],
+  "issue_tracker": "https://github.com/mihvs/megad/issues",
   "requirements": [
     "beautifulsoup4",
     "lxml",
