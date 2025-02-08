@@ -44,6 +44,7 @@ class MegaD:
         self.session = async_get_clientsession(hass)
         self.config: DeviceMegaD = config
         self.id = config.plc.megad_id
+        self.pids = config.pids
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
@@ -103,6 +104,14 @@ class MegaD:
         _LOGGER.debug(f'Температура платы контролера '
                       f'id:{self.id}: {self.temperature}')
         self.request_count += 1
+
+    async def update_pid(self):
+        """Обновление данных ПИД регуляторов"""
+        for pid in self.pids:
+            page = await async_get_page_config(
+                cf=11, url=self.url, session=self.session
+            )
+
 
     @staticmethod
     def check_port_is_thermostat(port) -> bool:

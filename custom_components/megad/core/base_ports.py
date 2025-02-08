@@ -13,7 +13,7 @@ from .models_megad import (
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
-    PORT
+    PORT, NOT_AVAILABLE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -352,7 +352,7 @@ class DigitalSensorBase(BasePort):
         sensors = raw_data.split('/')
         for sensor in sensors:
             category, value = sensor.split(':')
-            states[category] = value if value != 'NA' else None
+            states[category] = value if value != NOT_AVAILABLE else None
         return states
 
     def short_data(self, data):

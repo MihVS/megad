@@ -14,7 +14,7 @@ from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
     WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
-    AnalogPortConfig, SystemConfigMegaD
+    AnalogPortConfig, SystemConfigMegaD, PIDConfig
 )
 from ..const import (
     TITLE_MEGAD, NAME_SCRIPT_MEGAD, CONFIG, PORT
@@ -255,6 +255,7 @@ async def create_config_megad(file_path: str) -> DeviceMegaD:
 
     lines: list = await async_read_config_file(file_path)
     ports = []
+    pids = []
     configs = {}
     await asyncio.sleep(0)
 
@@ -294,5 +295,10 @@ async def create_config_megad(file_path: str) -> DeviceMegaD:
                 ports.append(I2CConfig(**params))
         elif params.get('pty') == '2':
             ports.append(AnalogPortConfig(**params))
+        elif params.get('cf') == '11':
+            if params.get('pidi') and params.get('pido'):
+                pids.append(PIDConfig(**params))
 
-    return DeviceMegaD(plc=SystemConfigMegaD(**configs), ports=ports)
+    return DeviceMegaD(
+        plc=SystemConfigMegaD(**configs), pids=pids, ports=ports
+    )

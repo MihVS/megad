@@ -316,3 +316,19 @@ class DeviceI2CMegaD(EnumMegaD):
             '90': 'ptsensor',
             '100': 'radsens',
         }
+
+
+class ModePIDMegaD(EnumMegaD):
+    """Типы настройки Mode ПИД"""
+
+    HEAT = 'heat'
+    COOL = 'cool'
+    BALANCE = 'balance'
+
+    @classmethod
+    def description(cls) -> dict:
+        return {
+            '0': 'heat',
+            '1': 'cool',
+            '2': 'balance',
+        }

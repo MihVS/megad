@@ -46,6 +46,7 @@ STATUS_THERMO = 'status_thermo'
 
 PLC_BUSY = 'busy'
 PORT_OFF = 'off'
+NOT_AVAILABLE = 'NA'
 
 # Номера страниц конфигураций для запроса
 START_CONFIG = 0

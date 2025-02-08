@@ -8,7 +8,8 @@ from .enums import (ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD,
                     TypePortMegaD, ModeInMegaD, DeviceClassBinary,
                     ModeOutMegaD, DeviceClassControl, TypeDSensorMegaD,
                     ModeSensorMegaD, ModeWiegandMegaD, ModeI2CMegaD,
-                    CategoryI2CMegaD, DeviceI2CMegaD, DeviceClassClimate)
+                    CategoryI2CMegaD, DeviceI2CMegaD, DeviceClassClimate,
+                    ModePIDMegaD)
 
 
 class SystemConfigMegaD(BaseModel):
@@ -41,17 +42,86 @@ class SystemConfigMegaD(BaseModel):
         return new_value
 
 
-class ThermostatConfig(BaseModel):
+class AddNameMixin:
+    """Добавляет название устройства из Title"""
+
+    name: str = Field(default='')
+
+    @model_validator(mode='before')
+    def add_name(cls, data):
+        title = data.get('pidt', '')
+        name = title.split('/')[0]
+        if name:
+            data['name'] = name
+        else:
+            data['name'] = f'port{data["pn"]}'
+        return data
+
+
+class PIDConfig(BaseModel):
     """Класс для ПИД терморегуляторов."""
 
     id: int = Field(alias='pid')
-    title: str = Field(alias='pidt')
-    input: int = Field(alias='pidi')
-    output: int = Field(alias='pido')
-    set_point: float = Field(alias='pidsp')
-    p_factor: float = Field(alias='pidpf')
-    i_factor: float = Field(alias='pidif')
-    d_factor: float = Field(alias='piddf')
+    title: str = Field(alias='pidt', default='')
+    input: int = Field(alias='pidi', default=255)
+    output: int = Field(alias='pido', default=255)
+    set_point: float = Field(alias='pidsp', default=0)
+    p_factor: float = Field(alias='pidpf', default=0)
+    i_factor: float = Field(alias='pidif', default=0)
+    d_factor: float = Field(alias='piddf', default=0)
+    mode: ModePIDMegaD = Field(alias='pidm')
+    cycle_time: int = Field(alias='pidc', ge=0, le=255, default=0)
+    value: int | None = None
+    name: str = Field(default='')
+    device_class: DeviceClassClimate = DeviceClassClimate.HOME
+
+    @field_validator('input', mode='before')
+    def validate_input(cls, value):
+        if value == '':
+            return 255
+        return int(value)
+
+    @field_validator('output', mode='before')
+    def validate_output(cls, value):
+        if value == '':
+            return 255
+        return int(value)
+
+    @field_validator('cycle_time', mode='before')
+    def validate_cycle_time(cls, value):
+        if value == '':
+            return 0
+        return int(value)
+
+    @model_validator(mode='before')
+    def add_device_class(cls, data):
+        title = data.get('pidt', '')
+        if title.count('/') > 0:
+            device_class = title.split('/')[1]
+            match device_class:
+                case DeviceClassClimate.HOME.value:
+                    data.update({'device_class': DeviceClassClimate.HOME})
+                case DeviceClassClimate.BOILER.value:
+                    data.update({'device_class': DeviceClassClimate.BOILER})
+                case DeviceClassClimate.CELLAR.value:
+                    data.update({'device_class': DeviceClassClimate.CELLAR})
+                case DeviceClassClimate.FLOOR.value:
+                    data.update({'device_class': DeviceClassClimate.FLOOR})
+        return data
+
+    @model_validator(mode='before')
+    def add_name(cls, data):
+        title = data.get('pidt', '')
+        name = title.split('/')[0]
+        if name:
+            data['name'] = name
+        else:
+            data['name'] = f'pid{data["pid"]}'
+        return data
+
+    @field_validator('mode', mode='before')
+    def convert_type_port(cls, value):
+        return ModePIDMegaD.get_value(value)
 
 
 class PortConfig(BaseModel):
@@ -357,7 +427,7 @@ class AnalogPortConfig(PortConfig, ModeControlSensorMixin):
 
 class DeviceMegaD(BaseModel):
     plc: SystemConfigMegaD
-    thermostats: list[ThermostatConfig] = []
+    pids: list[PIDConfig] = []
     ports: list[Union[
         PortConfig, PortInConfig, PortOutConfig, PortOutRelayConfig,
         PortOutPWMConfig, PortSensorConfig, OneWireSensorConfig,
