@@ -6,6 +6,7 @@ import async_timeout
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.update_coordinator import (
@@ -26,6 +27,8 @@ from .core.server import MegadHttpView
 from .core.utils import get_action_turnoff
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema("megad")
 
 
 async def async_setup(hass: HomeAssistant, config: dict):

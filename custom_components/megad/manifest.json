@@ -6,11 +6,12 @@
   "codeowners": ["@mihvs"],
   "config_flow": true,
   "integration_type": "hub",
+  "iot_class": "local_push",
   "dependencies": ["http", "zeroconf"],
   "requirements": [
     "beautifulsoup4",
     "lxml",
     "aiofiles"
   ],
-  "version": "v2025.2.2"
+  "version": "v2025.2.3-beta0"
 }
