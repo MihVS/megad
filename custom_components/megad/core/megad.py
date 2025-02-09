@@ -28,7 +28,7 @@ from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
     SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
-    PID_SET_POINT, PID_INPUT
+    PID_SET_POINT, PID_INPUT, PID_OFF
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class MegaD:
         return (f"<MegaD(id={self.config.plc.megad_id}, "
                 f"ip={self.config.plc.ip_megad}, ports={self.ports})>")
 
-    async def send_command(self, params) -> ClientResponse:
+    async def request_to_megad(self, params) -> ClientResponse:
         """Отправка запроса к контроллеру"""
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
             response = await self.session.get(url=self.url, params=params)
@@ -75,7 +75,7 @@ class MegaD:
 
     async def get_status(self, params: dict) -> str:
         """Получение статуса по переданным параметрам"""
-        response = await self.send_command(params)
+        response = await self.request_to_megad(params)
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.error(f'Неверный пароль для устройства с id {self.id}')
             raise InvalidPasswordMegad(f'Проверьте пароль у устройства '
@@ -268,7 +268,7 @@ class MegaD:
         """Установка новых параметров ПИД регулятора"""
         params = {CONFIG: 11, PID_E: 2, PID: pid_id}
         params.update(commands)
-        response = await self.send_command(params)
+        response = await self.request_to_megad(params)
         text = await response.text()
         match text:
             case 'busy':
@@ -286,7 +286,7 @@ class MegaD:
 
     async def turn_off_pid(self, pid_id):
         """Выключение ПИД регулятора"""
-        commands = {PID_INPUT: 255}
+        commands = {PID_INPUT: PID_OFF}
         await self.set_pid(pid_id, commands)
 
     async def turn_on_pid(self, pid_id):
@@ -298,7 +298,7 @@ class MegaD:
     async def set_temperature(self, port_id, temperature):
         """Установка заданной температуры терморегулятора."""
         params = {PORT: port_id, SET_TEMPERATURE: temperature}
-        response = await self.send_command(params)
+        response = await self.request_to_megad(params)
         text = await response.text()
         match text:
             case 'busy':
@@ -312,7 +312,7 @@ class MegaD:
     async def set_port(self, port_id, command):
         """Управление выходом релейным и шим"""
         params = {COMMAND: f'{port_id}:{command}'}
-        response = await self.send_command(params)
+        response = await self.request_to_megad(params)
         text = await response.text()
         match text:
             case 'busy':

@@ -48,7 +48,7 @@ async def async_setup_entry(
                 )
     for pid in megad.pids:
         unique_id = f'{entry_id}-{megad.id}-{pid.id}-pid'
-        port_in = megad.get_port(pid.input)
+        port_in = megad.get_port(pid.sensor_id)
         thermostats.append(
             PIDClimateEntity(coordinator, pid, port_in, unique_id)
         )
@@ -282,7 +282,7 @@ class PIDClimateEntity(BaseClimateEntity):
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        if self._attr_hvac_mode == HVACMode.OFF:
+        if self._pid.input == PID_OFF:
             return HVACAction.OFF
         port_out = self._megad.get_port(self._pid.output)
         if port_out.state:
