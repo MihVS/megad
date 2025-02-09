@@ -32,10 +32,10 @@ async def async_fetch_page(url: str, session: aiohttp.ClientSession) -> str:
 
 
 async def async_get_page(
-        param: str, value: int, url: str, session: aiohttp.ClientSession
+        params: dict, url: str, session: aiohttp.ClientSession
 ) -> str:
     """Получение страницы конфигурации контроллера"""
-    async with session.get(url=url, params={param: value}) as response:
+    async with session.get(url=url, params=params) as response:
         response.raise_for_status()
         return await response.text(encoding='windows-1251')
 
@@ -43,13 +43,13 @@ async def async_get_page(
 async def async_get_page_port(
         port_id: int, url: str, session: aiohttp.ClientSession) -> str:
     """Получение страницы конфигурации порта контроллера"""
-    return await async_get_page(PORT, port_id, url, session)
+    return await async_get_page({PORT: port_id}, url, session)
 
 
 async def async_get_page_config(
         cf: int, url: str, session: aiohttp.ClientSession) -> str:
     """Получение страницы конкретной конфигурации контроллера"""
-    return await async_get_page(CONFIG, cf, url, session)
+    return await async_get_page({CONFIG: cf}, url, session)
 
 
 def get_status_thermostat(page: str) -> bool:
@@ -131,14 +131,10 @@ async def async_parse_pages(url: str, session: aiohttp.ClientSession):
     return url, pages
 
 
-async def async_process_page(
-        base_url: str, page, fh, check: bool, session: aiohttp.ClientSession):
-    url = ""
-    page_content = await async_fetch_page(f"{base_url}?{page}", session)
-    if not page_content:
-        return
-
-    soup = BeautifulSoup(page_content, 'lxml')
+def get_params(page: str) -> str:
+    """Получает параметры настройки страницы контроллера"""
+    params = ''
+    soup = BeautifulSoup(page, 'lxml')
     for form in soup.find_all('form'):
         if form.get('style') == 'display:inline':
             continue
@@ -148,16 +144,38 @@ async def async_process_page(
                 value = inp.get('value', '')
                 if inp.get('type') == "checkbox":
                     value = 'on' if inp.has_attr('checked') else ''
-                url += f"{name}={value}&"
+                params += f"{name}={value}&"
 
     for select in soup.find_all('select'):
         name = select.get('name')
         selected_option = select.find('option', selected=True)
         if selected_option:
             value = selected_option.get('value', '')
-            url += f"{name}={value}&"
+            params += f"{name}={value}&"
+    return params.rstrip('&')
 
-    url = url.rstrip('&')
+
+def get_params_pid(page: str) -> dict:
+    """Получает параметры настройки ПИД регулятора из страницы"""
+    params = dict(
+        parse_qsl(get_params(page), keep_blank_values=True, encoding='cp1251')
+    )
+    value = ''
+    soup = BeautifulSoup(page, 'lxml')
+    for br in soup.find_all('br'):
+        text = str(br.next_sibling)
+        if 'Val:' in text:
+            value = text.split('Val:')[-1].strip()
+    params.update({'value': value})
+    return params
+
+
+async def async_process_page(
+        base_url: str, page, fh, check: bool, session: aiohttp.ClientSession):
+    page_content = await async_fetch_page(f"{base_url}?{page}", session)
+    if not page_content:
+        return
+    url = get_params(page_content)
     if url and url != 'cf=<br':
         if not _check_url(url, check):
             url = url + '&nr=1'
@@ -296,7 +314,7 @@ async def create_config_megad(file_path: str) -> DeviceMegaD:
         elif params.get('pty') == '2':
             ports.append(AnalogPortConfig(**params))
         elif params.get('cf') == '11':
-            if params.get('pidi') and params.get('pido'):
+            if params.get('pido'):
                 pids.append(PIDConfig(**params))
 
     return DeviceMegaD(

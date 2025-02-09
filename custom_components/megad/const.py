@@ -68,6 +68,7 @@ I2C_DEVICE = 'i2c_dev'
 DIRECTION = 'dir'
 SET_TEMPERATURE = 'misc'
 CONFIG = 'cf'
+PID = 'pid'
 
 # Значения запроса
 ON = 1

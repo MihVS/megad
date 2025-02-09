@@ -15,18 +15,18 @@ from .base_ports import (
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
     get_version_software, async_get_page_port, get_set_temp_thermostat,
-    get_status_thermostat
+    get_status_thermostat, async_get_page, get_params_pid
 )
 from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
     ModeI2CMegaD, ModeSensorMegaD
 )
 from .exceptions import PortBusy, InvalidPasswordMegad
-from .models_megad import DeviceMegaD
+from .models_megad import DeviceMegaD, PIDConfig
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
-    SET_TEMPERATURE, STATUS_THERMO
+    SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class MegaD:
         self.session = async_get_clientsession(hass)
         self.config: DeviceMegaD = config
         self.id = config.plc.megad_id
-        self.pids = config.pids
+        self.pids: list[PIDConfig] = config.pids
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
@@ -103,15 +103,22 @@ class MegaD:
         self.temperature = get_temperature_megad(page_cf1)
         _LOGGER.debug(f'Температура платы контролера '
                       f'id:{self.id}: {self.temperature}')
+        if self.pids:
+            await self.update_pid()
         self.request_count += 1
 
     async def update_pid(self):
         """Обновление данных ПИД регуляторов"""
-        for pid in self.pids:
-            page = await async_get_page_config(
-                cf=11, url=self.url, session=self.session
+        for i, pid in enumerate(self.pids):
+            params = {CONFIG: 11, PID: pid.id}
+            page = await async_get_page(
+                params=params, url=self.url, session=self.session
             )
-
+            if page != NOT_AVAILABLE:
+                conf_pid = get_params_pid(page)
+                self.pids[i] = pid.model_validate(conf_pid)
+                _LOGGER.debug(f'Обновлённые данные ПИД регулятора {pid.id}: '
+                              f'{conf_pid}')
 
     @staticmethod
     def check_port_is_thermostat(port) -> bool:
@@ -238,6 +245,14 @@ class MegaD:
         return next(
             (port for port in self.ports
              if port.conf.id == int(port_id)),
+            None
+        )
+
+    def get_pid(self, pid_id):
+        """Получить ПИД по его id"""
+        return next(
+            (pid for pid in self.pids
+             if pid.id == int(pid_id)),
             None
         )
 

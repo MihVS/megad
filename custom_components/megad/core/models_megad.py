@@ -10,6 +10,7 @@ from .enums import (ServerTypeMegaD, ConfigUARTMegaD, TypeNetActionMegaD,
                     ModeSensorMegaD, ModeWiegandMegaD, ModeI2CMegaD,
                     CategoryI2CMegaD, DeviceI2CMegaD, DeviceClassClimate,
                     ModePIDMegaD)
+from ..const import NOT_AVAILABLE
 
 
 class SystemConfigMegaD(BaseModel):
@@ -74,6 +75,12 @@ class PIDConfig(BaseModel):
     value: int | None = None
     name: str = Field(default='')
     device_class: DeviceClassClimate = DeviceClassClimate.HOME
+
+    @field_validator('value', mode='before')
+    def validate_value(cls, value):
+        if value == NOT_AVAILABLE:
+            return None
+        return int(value)
 
     @field_validator('input', mode='before')
     def validate_input(cls, value):
