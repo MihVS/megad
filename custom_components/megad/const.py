@@ -69,10 +69,14 @@ DIRECTION = 'dir'
 SET_TEMPERATURE = 'misc'
 CONFIG = 'cf'
 PID = 'pid'
+PID_E = 'pide'
+PID_SET_POINT = 'pidsp'
+PID_INPUT = 'pidi'
 
 # Значения запроса
 ON = 1
 OFF = 0
+PID_OFF = 255
 
 # Параметры ответа MegaD
 MEGAD_ID = 'mdid'

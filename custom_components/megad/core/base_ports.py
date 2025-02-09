@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 
 from .exceptions import (
-    UpdateStateError, TypeSensorError, PortBusy, PortOFFError
+    UpdateStateError, TypeSensorError, MegaDBusy, PortOFFError
 )
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
@@ -346,7 +346,7 @@ class DigitalSensorBase(BasePort):
         """Достаёт всевозможные показания датчиков из сырых данных"""
         states = {}
         if raw_data.lower() == PLC_BUSY:
-            raise PortBusy
+            raise MegaDBusy
         if raw_data.lower() == PORT_OFF:
             raise PortOFFError
         sensors = raw_data.split('/')
@@ -380,7 +380,7 @@ class DigitalSensorBase(BasePort):
 
         except ValueError:
             self.short_data(data)
-        except PortBusy:
+        except MegaDBusy:
             _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
                          f'обновить данные порта id={self.conf.id}, '
                          f'Ответ = {data}')
@@ -498,7 +498,7 @@ class OneWireBusSensorPort(DigitalSensorBase):
         if 'window' in raw_data:
             raise TypeSensorError
         if raw_data.lower() == PLC_BUSY:
-            raise PortBusy
+            raise MegaDBusy
         if raw_data.lower() == PORT_OFF:
             raise PortOFFError
         sensors = raw_data.split(';')
@@ -568,13 +568,13 @@ class AnalogSensor(BasePort):
             if data.isdigit():
                 self._state = data
             elif data.lower() == PLC_BUSY:
-                raise PortBusy
+                raise MegaDBusy
             elif data.lower() == PORT_OFF:
                 raise PortOFFError
             else:
                 raise UpdateStateError
 
-        except PortBusy:
+        except MegaDBusy:
             _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
                          f'обновить данные порта id={self.conf.id}, '
                          f'Ответ = {data}')

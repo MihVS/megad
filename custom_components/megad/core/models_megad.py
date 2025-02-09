@@ -63,6 +63,7 @@ class PIDConfig(BaseModel):
     """Класс для ПИД терморегуляторов."""
 
     id: int = Field(alias='pid')
+    sensor_id: int | None = Field(default=None)
     title: str = Field(alias='pidt', default='')
     input: int = Field(alias='pidi', default=255)
     output: int = Field(alias='pido', default=255)
@@ -101,8 +102,13 @@ class PIDConfig(BaseModel):
         return int(value)
 
     @model_validator(mode='before')
-    def add_device_class(cls, data):
+    def add_field(cls, data):
         title = data.get('pidt', '')
+        name = title.split('/')[0]
+        if name:
+            data['name'] = name
+        else:
+            data['name'] = f'pid{data["pid"]}'
         if title.count('/') > 0:
             device_class = title.split('/')[1]
             match device_class:
@@ -114,16 +120,10 @@ class PIDConfig(BaseModel):
                     data.update({'device_class': DeviceClassClimate.CELLAR})
                 case DeviceClassClimate.FLOOR.value:
                     data.update({'device_class': DeviceClassClimate.FLOOR})
-        return data
-
-    @model_validator(mode='before')
-    def add_name(cls, data):
-        title = data.get('pidt', '')
-        name = title.split('/')[0]
-        if name:
-            data['name'] = name
-        else:
-            data['name'] = f'pid{data["pid"]}'
+        if title.count('/') > 1:
+            sensor_id = title.split('/')[2]
+            if sensor_id.isdigit():
+                data.update({'sensor_id': sensor_id})
         return data
 
     @field_validator('mode', mode='before')

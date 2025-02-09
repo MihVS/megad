@@ -4,6 +4,7 @@ from http import HTTPStatus
 from typing import Union
 
 import async_timeout
+from aiohttp import ClientResponse
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -21,12 +22,13 @@ from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
     ModeI2CMegaD, ModeSensorMegaD
 )
-from .exceptions import PortBusy, InvalidPasswordMegad
+from .exceptions import MegaDBusy, InvalidPasswordMegad
 from .models_megad import DeviceMegaD, PIDConfig
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
-    SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE
+    SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
+    PID_SET_POINT, PID_INPUT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,11 +65,17 @@ class MegaD:
         return (f"<MegaD(id={self.config.plc.megad_id}, "
                 f"ip={self.config.plc.ip_megad}, ports={self.ports})>")
 
+    async def send_command(self, params) -> ClientResponse:
+        """Отправка запроса к контроллеру"""
+        async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+            response = await self.session.get(url=self.url, params=params)
+            _LOGGER.debug(f'Отправлен запрос контроллеру '
+                          f'id {self.id}: {params}')
+        return response
+
     async def get_status(self, params: dict) -> str:
         """Получение статуса по переданным параметрам"""
-        response = await self.session.get(url=self.url, params=params)
-        _LOGGER.debug(f'Отправлен запрос контроллеру '
-                      f'id {self.id}: {params}')
+        response = await self.send_command(params)
         if response.status == HTTPStatus.UNAUTHORIZED:
             _LOGGER.error(f'Неверный пароль для устройства с id {self.id}')
             raise InvalidPasswordMegad(f'Проверьте пароль у устройства '
@@ -256,19 +264,47 @@ class MegaD:
             None
         )
 
+    async def set_pid(self, pid_id: int, commands: dict):
+        """Установка новых параметров ПИД регулятора"""
+        params = {CONFIG: 11, PID_E: 2, PID: pid_id}
+        params.update(commands)
+        response = await self.send_command(params)
+        text = await response.text()
+        match text:
+            case 'busy':
+                _LOGGER.warning(f'Не удалось изменить параметры ПИД №{pid_id} '
+                                f'на {commands}')
+                raise MegaDBusy
+            case _:
+                _LOGGER.debug(f'Параметры ПИД №{pid_id} успешно изменены '
+                              f'на {commands}')
+
+    async def set_temperature_pid(self, pid_id, temperature):
+        """Установка заданной температуры ПИД регулятора"""
+        commands = {PID_SET_POINT: temperature}
+        await self.set_pid(pid_id, commands)
+
+    async def turn_off_pid(self, pid_id):
+        """Выключение ПИД регулятора"""
+        commands = {PID_INPUT: 255}
+        await self.set_pid(pid_id, commands)
+
+    async def turn_on_pid(self, pid_id):
+        """Включение ПИД регулятора"""
+        pid = self.get_pid(pid_id)
+        commands = {PID_INPUT: pid.sensor_id}
+        await self.set_pid(pid_id, commands)
+
     async def set_temperature(self, port_id, temperature):
         """Установка заданной температуры терморегулятора."""
         params = {PORT: port_id, SET_TEMPERATURE: temperature}
-        async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
-            response = await self.session.get(url=self.url, params=params)
-            _LOGGER.debug(f'Отправлен запрос контроллеру '
-                          f'id {self.id}: {params}')
+        response = await self.send_command(params)
         text = await response.text()
         match text:
             case 'busy':
                 _LOGGER.warning(f'Не удалось изменить заданную температуру '
                                 f'порта №{port_id} на {temperature}')
-                raise PortBusy
+                raise MegaDBusy
             case _:
                 _LOGGER.debug(f'Заданная температура порта №{port_id} '
                               f'изменена на {temperature}')
@@ -276,17 +312,14 @@ class MegaD:
     async def set_port(self, port_id, command):
         """Управление выходом релейным и шим"""
         params = {COMMAND: f'{port_id}:{command}'}
-        async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
-            response = await self.session.get(url=self.url, params=params)
-            _LOGGER.debug(f'Отправлен запрос контроллеру '
-                          f'id {self.id}: {params}')
+        response = await self.send_command(params)
         text = await response.text()
         match text:
             case 'busy':
                 _LOGGER.warning(f'Не удалось изменить состояние порта или '
                                 f'группы портов №{port_id}. '
                                 f'Команда: {command}')
-                raise PortBusy
+                raise MegaDBusy
             case _:
                 if 'g' in str(port_id):
                     _LOGGER.debug(f'Группа портов №{port_id} изменила'

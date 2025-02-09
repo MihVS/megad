@@ -6,7 +6,7 @@ class UpdateStateError(Exception):
     pass
 
 
-class PortBusy(Exception):
+class MegaDBusy(Exception):
     """Контроллер не успел выполнить команду"""
     pass
 
