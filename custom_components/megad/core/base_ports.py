@@ -268,6 +268,9 @@ class ReleyPortOut(BasePort):
         state: bool
 
         try:
+            if isinstance(data, int):
+                data = str(data)
+                self._validate_general_request_data(data)
             if isinstance(data, str):
                 self._validate_general_request_data(data)
                 data = data.lower()

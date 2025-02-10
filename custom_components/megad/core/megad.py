@@ -112,10 +112,10 @@ class MegaD:
         _LOGGER.debug(f'Температура платы контролера '
                       f'id:{self.id}: {self.temperature}')
         if self.pids:
-            await self.update_pid()
+            await self.update_pids()
         self.request_count += 1
 
-    async def update_pid(self):
+    async def update_pids(self):
         """Обновление данных ПИД регуляторов"""
         for i, pid in enumerate(self.pids):
             params = {CONFIG: 11, PID: pid.id}
@@ -124,7 +124,7 @@ class MegaD:
             )
             if page != NOT_AVAILABLE:
                 conf_pid = get_params_pid(page)
-                self.pids[i] = pid.model_validate(conf_pid)
+                self.pids[i] = PIDConfig.model_validate(conf_pid)
                 _LOGGER.debug(f'Обновлённые данные ПИД регулятора {pid.id}: '
                               f'{conf_pid}')
 
@@ -248,6 +248,15 @@ class MegaD:
             new_state = port.state
             self._check_change_port(port, old_state, new_state)
 
+    def update_pid(self, pid_id, data):
+        """Обновить данные ПИД регулятора по его id"""
+        pid = self.get_pid(pid_id)
+        updated_pid = pid.model_copy(update=data)
+        for i, pid in enumerate(self.pids):
+            if pid.id == pid_id:
+                self.pids[i] = updated_pid
+                break
+
     def get_port(self, port_id):
         """Получить порт по его id"""
         return next(
@@ -269,7 +278,7 @@ class MegaD:
         params = {CONFIG: 11, PID_E: 2, PID: pid_id}
         params.update(commands)
         response = await self.request_to_megad(params)
-        text = await response.text()
+        text = await response.text(encoding='windows-1251')
         match text:
             case 'busy':
                 _LOGGER.warning(f'Не удалось изменить параметры ПИД №{pid_id} '

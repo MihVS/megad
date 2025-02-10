@@ -22,7 +22,7 @@ from .core.config_parser import create_config_megad
 from .core.enums import ModeInMegaD, TypePortMegaD
 from .core.exceptions import InvalidSettingPort
 from .core.megad import MegaD
-from .core.models_megad import DeviceMegaD
+from .core.models_megad import DeviceMegaD, PIDConfig
 from .core.server import MegadHttpView
 from .core.utils import get_action_turnoff
 
@@ -141,12 +141,9 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     def update_pid_state(self, pid_id: int, data: dict):
         """Обновление состояния ПИД регулятора"""
-        for i, pid in enumerate(self.megad.pids):
-            if pid.id == pid_id:
-                self.megad.pids[i] = pid.model_copy(
-                    update=data)
-                break
+        self.megad.update_pid(pid_id, data)
         self.hass.loop.call_soon(self.async_update_listeners)
+
 
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""

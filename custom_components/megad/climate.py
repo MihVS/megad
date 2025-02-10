@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from propcache import cached_property
@@ -13,7 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, TEMPERATURE_CONDITION, TEMPERATURE,
-    OFF, ON, STATUS_THERMO, DIRECTION, PID_OFF
+    OFF, ON, STATUS_THERMO, DIRECTION, PID_OFF, TIME_SLEEP_REQUEST
 )
 from .core.base_ports import OneWireSensorPort
 from .core.enums import ModePIDMegaD
@@ -121,6 +122,7 @@ class BaseClimateEntity(CoordinatorEntity, ClimateEntity):
         else:
             await self._megad.set_port(self._port.conf.id, OFF)
             actions_off = get_action_turnoff(self._port.conf.action)
+            await asyncio.sleep(TIME_SLEEP_REQUEST)
             await self._megad.send_command(actions_off)
             for action in actions_off.split(';'):
                 if action:
@@ -233,7 +235,8 @@ class PIDClimateEntity(BaseClimateEntity):
     @property
     def target_temperature(self):
         """Возвращает целевую температуру."""
-        return self._pid.set_point
+        pid = self._megad.get_pid(self._pid.id)
+        return pid.set_point
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Устанавливает режим HVAC."""
@@ -244,9 +247,13 @@ class PIDClimateEntity(BaseClimateEntity):
             )
         else:
             await self._megad.turn_off_pid(self._pid.id)
+            if self._megad.get_port(self._pid.output).state:
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
+                await self._megad.set_port(self._pid.output, OFF)
             self._coordinator.update_pid_state(
                 self._pid.id, {'input': PID_OFF}
             )
+            await self._coordinator.update_port_state(self._pid.output, OFF)
 
     async def async_set_temperature(self, **kwargs):
         """Устанавливает целевую температуру."""
@@ -266,9 +273,10 @@ class PIDClimateEntity(BaseClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode | None:
         """Return hvac operation ie. heat, cool mode."""
-        if self._pid.input == PID_OFF:
+        pid = self._megad.get_pid(self._pid.id)
+        if pid.input == PID_OFF:
             return HVACMode.OFF
-        match self._pid.mode:
+        match pid.mode:
             case ModePIDMegaD.HEAT:
                 return HVACMode.HEAT
             case ModePIDMegaD.COOL:
@@ -278,13 +286,13 @@ class PIDClimateEntity(BaseClimateEntity):
             case _:
                 return HVACMode.OFF
 
-
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        if self._pid.input == PID_OFF:
+        pid = self._megad.get_pid(self._pid.id)
+        if pid.input == PID_OFF:
             return HVACAction.OFF
-        port_out = self._megad.get_port(self._pid.output)
+        port_out = self._megad.get_port(pid.output)
         if port_out.state:
             return HVACAction.HEATING
         return HVACAction.IDLE
