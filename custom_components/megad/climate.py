@@ -14,14 +14,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, TEMPERATURE_CONDITION, TEMPERATURE,
-    OFF, ON, STATUS_THERMO, DIRECTION, PID_OFF, TIME_SLEEP_REQUEST
+    OFF, ON, STATUS_THERMO, DIRECTION, PID_OFF, TIME_SLEEP_REQUEST, INPUT_PID,
+    TARGET_TEMP
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import OneWireSensorPort
 from .core.enums import ModePIDMegaD
 from .core.exceptions import TemperatureOutOfRangeError
 from .core.megad import MegaD
-from .core.models_megad import PIDConfig
 from .core.utils import get_action_turnoff
 
 _LOGGER = logging.getLogger(__name__)
@@ -243,25 +243,27 @@ class PIDClimateEntity(BaseClimateEntity):
         if hvac_mode in (HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO):
             await self._megad.turn_on_pid(self._pid.conf.id)
             self._coordinator.update_pid_state(
-                self._pid.id, {'input': self._pid.sensor_id}
+                self._pid.conf.id, {INPUT_PID: self._pid.conf.sensor_id}
             )
         else:
-            await self._megad.turn_off_pid(self._pid.id)
-            if self._megad.get_port(self._pid.output).state:
+            await self._megad.turn_off_pid(self._pid.conf.id)
+            if self._megad.get_port(self._pid.conf.output).state:
                 await asyncio.sleep(TIME_SLEEP_REQUEST)
-                await self._megad.set_port(self._pid.output, OFF)
+                await self._megad.set_port(self._pid.conf.output, OFF)
             self._coordinator.update_pid_state(
-                self._pid.id, {'input': PID_OFF}
+                self._pid.conf.id, {INPUT_PID: PID_OFF}
             )
-            await self._coordinator.update_port_state(self._pid.output, OFF)
+            await self._coordinator.update_port_state(
+                self._pid.conf.output, OFF
+            )
 
     async def async_set_temperature(self, **kwargs):
         """Устанавливает целевую температуру."""
         set_temp = kwargs.get('temperature')
         if self._attr_min_temp <= set_temp <= self._attr_max_temp:
-            await self._megad.set_temperature_pid(self._pid.id, set_temp)
+            await self._megad.set_temperature_pid(self._pid.conf.id, set_temp)
             self._coordinator.update_pid_state(
-                self._pid.id, {'set_point': set_temp}
+                self._pid.conf.id, {TARGET_TEMP: set_temp}
             )
         else:
             raise TemperatureOutOfRangeError(
@@ -273,26 +275,25 @@ class PIDClimateEntity(BaseClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode | None:
         """Return hvac operation ie. heat, cool mode."""
-        pid = self._megad.get_pid(self._pid.id)
-        if pid.input == PID_OFF:
+        if self._pid.status:
+            match self._pid.conf.mode:
+                case ModePIDMegaD.HEAT:
+                    return HVACMode.HEAT
+                case ModePIDMegaD.COOL:
+                    return HVACMode.COOL
+                case ModePIDMegaD.BALANCE:
+                    return HVACMode.AUTO
+                case _:
+                    return HVACMode.OFF
+        else:
             return HVACMode.OFF
-        match pid.mode:
-            case ModePIDMegaD.HEAT:
-                return HVACMode.HEAT
-            case ModePIDMegaD.COOL:
-                return HVACMode.COOL
-            case ModePIDMegaD.BALANCE:
-                return HVACMode.AUTO
-            case _:
-                return HVACMode.OFF
 
     @property
     def hvac_action(self):
         """Возвращает текущее действие HVAC (нагрев, охлаждение и т.д.)."""
-        pid = self._megad.get_pid(self._pid.id)
-        if pid.input == PID_OFF:
+        if not self._pid.status:
             return HVACAction.OFF
-        port_out = self._megad.get_port(pid.output)
+        port_out = self._megad.get_port(self._pid.conf.output)
         if port_out.state:
             return HVACAction.HEATING
         return HVACAction.IDLE

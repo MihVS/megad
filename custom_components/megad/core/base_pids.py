@@ -23,7 +23,7 @@ class PIDControl:
 
     @property
     def status(self) -> bool:
-        return self._state.get(P_FACTOR, 0.0)
+        return False if self._state.get(INPUT_PID) == 255 else True
 
     @status.setter
     def status(self, value: bool):

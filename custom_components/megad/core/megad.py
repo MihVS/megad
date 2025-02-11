@@ -262,10 +262,7 @@ class MegaD:
         """Обновить данные ПИД регулятора по его id"""
         pid = self.get_pid(pid_id)
         if pid:
-            old_state = pid.state
             pid.update_state(data)
-            new_state = pid.state
-            self._check_change_pid(pid, old_state, new_state)
 
     def get_port(self, port_id):
         """Получить порт по его id"""
@@ -295,8 +292,8 @@ class MegaD:
                                 f'на {commands}')
                 raise MegaDBusy
             case _:
-                _LOGGER.debug(f'Параметры ПИД №{pid_id} успешно изменены '
-                              f'на {commands}')
+                _LOGGER.debug(f'Параметры ПИД №{pid_id} (MegaD-{self.id}) '
+                              f'успешно изменены на {commands}')
 
     async def set_temperature_pid(self, pid_id, temperature):
         """Установка заданной температуры ПИД регулятора"""
@@ -353,20 +350,6 @@ class MegaD:
                           f'изменил состояние с {old_state} на {new_state}')
             return True
         return False
-
-    def _check_change_pid(
-            self, pid: PIDControl, old_state: dict, new_state: dict):
-        """Проверяет новое и старое состояния портов."""
-        old_data = {}
-        updated_data = {}
-        for key in old_state:
-            if old_state[key] != new_state[key]:
-                old_data.update({key: old_state[key]})
-                updated_data.update({key: new_state[key]})
-        if updated_data:
-            _LOGGER.debug(f'ПИД №{pid.conf.id} - {pid.conf.name}, '
-                          f'устройства id:{self.id}, '
-                          f'обновил данные {old_data} на {updated_data}')
 
     async def send_command(self, action) -> None:
         """Отправка команды на контроллер"""
