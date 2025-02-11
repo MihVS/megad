@@ -54,6 +54,14 @@ MAIN_CONFIG = 1
 ID_CONFIG = 2
 VIRTUAL_PORTS_CONFIG = 5
 
+# Параметры ПИД
+P_FACTOR = 'p_factor'
+I_FACTOR = 'i_factor'
+D_FACTOR = 'd_factor'
+VALUE_PID = 'value'
+INPUT_PID = 'input'
+TARGET_TEMP = 'set_point'
+
 # Параметры запроса MegaD
 VALUE = 'v'
 COUNT = 'cnt'

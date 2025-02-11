@@ -40,7 +40,7 @@ class BasePort(ABC):
 
     def __repr__(self):
         return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
-                f'type={self.conf.type_port}, state={self._state}), '
+                f'type={self.conf.type_port}, state={self._state}, '
                 f'name={self.conf.name})>')
 
 

@@ -8,6 +8,7 @@ from aiohttp import ClientResponse
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from .base_pids import PIDControl
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
@@ -46,7 +47,7 @@ class MegaD:
         self.session = async_get_clientsession(hass)
         self.config: DeviceMegaD = config
         self.id = config.plc.megad_id
-        self.pids: list[PIDConfig] = config.pids
+        self.pids: list[PIDControl] = []
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
@@ -59,6 +60,7 @@ class MegaD:
         self.software: str | None = None
         self.request_count: int = COUNT_UPDATE
         self.init_ports()
+        self.init_pids()
         _LOGGER.debug(f'Создан объект MegaD: {self}')
 
     def __repr__(self):
@@ -117,16 +119,17 @@ class MegaD:
 
     async def update_pids(self):
         """Обновление данных ПИД регуляторов"""
-        for i, pid in enumerate(self.pids):
-            params = {CONFIG: 11, PID: pid.id}
+        for pid in self.pids:
+            params = {CONFIG: 11, PID: pid.conf.id}
             page = await async_get_page(
                 params=params, url=self.url, session=self.session
             )
             if page != NOT_AVAILABLE:
-                conf_pid = get_params_pid(page)
-                self.pids[i] = PIDConfig.model_validate(conf_pid)
-                _LOGGER.debug(f'Обновлённые данные ПИД регулятора {pid.id}: '
-                              f'{conf_pid}')
+                params_pid = get_params_pid(page)
+                conf_pid = PIDConfig(**params_pid)
+                pid.update_state(conf_pid)
+                _LOGGER.debug(f'Обновлённые данные ПИД регулятора '
+                              f'{pid.conf.id}: {conf_pid.model_dump()}')
 
     @staticmethod
     def check_port_is_thermostat(port) -> bool:
@@ -239,6 +242,13 @@ class MegaD:
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
 
+    def init_pids(self, ):
+        """Инициализация ПИД регуляторов"""
+        for pid in self.config.pids:
+            if pid.output != PID_OFF and pid.sensor_id is not None:
+                self.pids.append(PIDControl(pid, self.id))
+        _LOGGER.debug(f'Инициализированные ПИД регуляторы: {self.pids}')
+
     def update_port(self, port_id, data):
         """Обновить данные порта по его id"""
         port = self.get_port(port_id)
@@ -251,11 +261,11 @@ class MegaD:
     def update_pid(self, pid_id, data):
         """Обновить данные ПИД регулятора по его id"""
         pid = self.get_pid(pid_id)
-        updated_pid = pid.model_copy(update=data)
-        for i, pid in enumerate(self.pids):
-            if pid.id == pid_id:
-                self.pids[i] = updated_pid
-                break
+        if pid:
+            old_state = pid.state
+            pid.update_state(data)
+            new_state = pid.state
+            self._check_change_pid(pid, old_state, new_state)
 
     def get_port(self, port_id):
         """Получить порт по его id"""
@@ -269,7 +279,7 @@ class MegaD:
         """Получить ПИД по его id"""
         return next(
             (pid for pid in self.pids
-             if pid.id == int(pid_id)),
+             if pid.conf.id == int(pid_id)),
             None
         )
 
@@ -301,7 +311,7 @@ class MegaD:
     async def turn_on_pid(self, pid_id):
         """Включение ПИД регулятора"""
         pid = self.get_pid(pid_id)
-        commands = {PID_INPUT: pid.sensor_id}
+        commands = {PID_INPUT: pid.conf.sensor_id}
         await self.set_pid(pid_id, commands)
 
     async def set_temperature(self, port_id, temperature):
@@ -337,13 +347,26 @@ class MegaD:
     def _check_change_port(
             self, port: BasePort, old_state: str, new_state: str) -> bool:
         """Проверяет новое и старое состояния портов."""
-
         if old_state != new_state:
             _LOGGER.debug(f'Порт №{port.conf.id} - {port.conf.name}, '
                           f'устройства id:{self.id}, '
                           f'изменил состояние с {old_state} на {new_state}')
             return True
         return False
+
+    def _check_change_pid(
+            self, pid: PIDControl, old_state: dict, new_state: dict):
+        """Проверяет новое и старое состояния портов."""
+        old_data = {}
+        updated_data = {}
+        for key in old_state:
+            if old_state[key] != new_state[key]:
+                old_data.update({key: old_state[key]})
+                updated_data.update({key: new_state[key]})
+        if updated_data:
+            _LOGGER.debug(f'ПИД №{pid.conf.id} - {pid.conf.name}, '
+                          f'устройства id:{self.id}, '
+                          f'обновил данные {old_data} на {updated_data}')
 
     async def send_command(self, action) -> None:
         """Отправка команды на контроллер"""

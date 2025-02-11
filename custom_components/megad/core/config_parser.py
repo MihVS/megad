@@ -268,18 +268,18 @@ def decode_emt(input_string: str) -> str:
         return input_string
 
 
-def check_config_pid(params: dict) -> bool:
-    """Проверяет правильность настройки ПИД что бы добавить устройство"""
-    check_sensor = False
-    check_output = False
-    title = params.get('pidt', '')
-    if title.count('/') > 1:
-        sensor_id = title.split('/')[2]
-        if sensor_id.isdigit():
-            check_sensor = True
-    if params.get('pido'):
-        check_output = True
-    return check_sensor and check_output
+# def check_config_pid(params: dict) -> bool:
+#     """Проверяет правильность настройки ПИД что бы добавить устройство"""
+#     check_sensor = False
+#     check_output = False
+#     title = params.get('pidt', '')
+#     if title.count('/') > 1:
+#         sensor_id = title.split('/')[2]
+#         if sensor_id.isdigit():
+#             check_sensor = True
+#     if params.get('pido'):
+#         check_output = True
+#     return check_sensor and check_output
 
 
 async def create_config_megad(file_path: str) -> DeviceMegaD:
@@ -328,8 +328,7 @@ async def create_config_megad(file_path: str) -> DeviceMegaD:
         elif params.get('pty') == '2':
             ports.append(AnalogPortConfig(**params))
         elif params.get('cf') == '11':
-            if check_config_pid(params):
-                pids.append(PIDConfig(**params))
+            pids.append(PIDConfig(**params))
 
     return DeviceMegaD(
         plc=SystemConfigMegaD(**configs), pids=pids, ports=ports

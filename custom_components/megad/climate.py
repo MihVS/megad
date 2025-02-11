@@ -16,6 +16,7 @@ from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, TEMPERATURE_CONDITION, TEMPERATURE,
     OFF, ON, STATUS_THERMO, DIRECTION, PID_OFF, TIME_SLEEP_REQUEST
 )
+from .core.base_pids import PIDControl
 from .core.base_ports import OneWireSensorPort
 from .core.enums import ModePIDMegaD
 from .core.exceptions import TemperatureOutOfRangeError
@@ -48,8 +49,8 @@ async def async_setup_entry(
                     HeatClimateEntity(coordinator, port, unique_id)
                 )
     for pid in megad.pids:
-        unique_id = f'{entry_id}-{megad.id}-{pid.id}-pid'
-        port_in = megad.get_port(pid.sensor_id)
+        unique_id = f'{entry_id}-{megad.id}-{pid.conf.id}-pid'
+        port_in = megad.get_port(pid.conf.sensor_id)
         thermostats.append(
             PIDClimateEntity(coordinator, pid, port_in, unique_id)
         )
@@ -212,36 +213,35 @@ class PIDClimateEntity(BaseClimateEntity):
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
 
     def __init__(
-            self, coordinator: MegaDCoordinator, pid: PIDConfig,
+            self, coordinator: MegaDCoordinator, pid: PIDControl,
             port: OneWireSensorPort, unique_id: str
     ) -> None:
         super().__init__(coordinator, port, unique_id)
-        self._pid: PIDConfig = pid
-        self._name: str = pid.name
-        self.entity_id = f'climate.{self._megad.id}_pid{pid.id}'
+        self._pid: PIDControl = pid
+        self._name: str = pid.conf.name
+        self.entity_id = f'climate.{self._megad.id}_pid{pid.conf.id}'
         self._attr_min_temp, self._attr_max_temp = (
-            TEMPERATURE_CONDITION[pid.device_class]
+            TEMPERATURE_CONDITION[pid.conf.device_class]
         )
         self._attr_hvac_modes = self.get_hvac_modes()
 
     def get_hvac_modes(self) -> list[HVACMode]:
         """Получить нужные режимы для терморегулятора"""
-        if self._pid.mode == ModePIDMegaD.COOL:
+        if self._pid.conf.mode == ModePIDMegaD.COOL:
             return [HVACMode.COOL, HVACMode.OFF]
-        if self._pid.mode == ModePIDMegaD.HEAT:
+        if self._pid.conf.mode == ModePIDMegaD.HEAT:
             return [HVACMode.HEAT, HVACMode.OFF]
         return [HVACMode.AUTO, HVACMode.OFF]
 
     @property
     def target_temperature(self):
         """Возвращает целевую температуру."""
-        pid = self._megad.get_pid(self._pid.id)
-        return pid.set_point
+        return self._pid.target_temp
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Устанавливает режим HVAC."""
         if hvac_mode in (HVACMode.HEAT, HVACMode.COOL, HVACMode.AUTO):
-            await self._megad.turn_on_pid(self._pid.id)
+            await self._megad.turn_on_pid(self._pid.conf.id)
             self._coordinator.update_pid_state(
                 self._pid.id, {'input': self._pid.sensor_id}
             )
