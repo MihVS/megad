@@ -12,6 +12,7 @@ from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
     HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS
 )
+from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
@@ -90,6 +91,10 @@ async def async_setup_entry(
     sensors.append(SensorDeviceMegaD(
         coordinator, f'{entry_id}-{megad.id}-{UPTIME}', UPTIME)
     )
+    for pid in megad.pids:
+        unique_id = f'{entry_id}-{megad.id}-{pid.conf.id}-pid-value'
+        sensors.append(PIDSensorMegaD(coordinator, pid, unique_id))
+
     for sensor in sensors:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             sensor.unique_id)
@@ -335,3 +340,46 @@ class AnalogSensorMegaD(CoordinatorEntity, SensorEntity):
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
         return self._port.state
+
+
+class PIDSensorMegaD(CoordinatorEntity, SensorEntity):
+
+    _attr_icon = 'mdi:information-outline'
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, pid: PIDControl,
+            unique_id: str, type_sensor: str | None = None
+    ) -> None:
+        super().__init__(coordinator)
+        self._megad: MegaD = coordinator.megad
+        self._pid: PIDControl = pid
+        self.type_sensor = type_sensor
+        self._attr_name = f'{self._megad.id}_{pid.conf.id}_pid_value'
+        self._attr_unique_id = unique_id
+        self._attr_device_info = coordinator.devices_info()
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Sensor entity {self.entity_id}>"
+        return super().__repr__()
+
+    @cached_property
+    def state_class(self) -> SensorStateClass | str | None:
+        """Return the state class of this entity, if any."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> int:
+        """Возвращает состояние сенсора"""
+        if self._pid.value is not None:
+            return int(self._pid.value)
+        else:
+            return 0
+
+    @cached_property
+    def extra_state_attributes(self):
+        """Дополнительные атрибуты сенсора."""
+        return {
+            'min_value': -32767,
+            'max_value': 32767,
+        }
