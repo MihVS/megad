@@ -24,6 +24,7 @@ from .core.exceptions import TemperatureOutOfRangeError
 from .core.megad import MegaD
 from .core.utils import get_action_turnoff
 
+
 _LOGGER = logging.getLogger(__name__)
 
 

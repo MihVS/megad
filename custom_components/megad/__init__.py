@@ -144,7 +144,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
         self.megad.update_pid(pid_id, data)
         self.hass.loop.call_soon(self.async_update_listeners)
 
-
     async def update_port_state(self, port_id, data):
         """Обновление состояния конкретного порта."""
         port = self.megad.get_port(port_id)
@@ -169,7 +168,6 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     def update_group_state(self, port_states: dict[int, str]):
         """Обновление состояний портов в группе"""
-
         for port_id, state in port_states.items():
             self.megad.update_port(port_id, state)
         self.hass.loop.call_soon(self.async_update_listeners)

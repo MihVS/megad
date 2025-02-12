@@ -1,4 +1,5 @@
 from collections import namedtuple
+from dataclasses import dataclass
 
 from .core.enums import DeviceClassClimate
 from homeassistant.const import (
@@ -61,6 +62,7 @@ D_FACTOR = 'd_factor'
 VALUE_PID = 'value'
 INPUT_PID = 'input'
 TARGET_TEMP = 'set_point'
+STEP_FACTOR = 0.01
 
 # Параметры запроса MegaD
 VALUE = 'v'
@@ -80,6 +82,9 @@ PID = 'pid'
 PID_E = 'pide'
 PID_SET_POINT = 'pidsp'
 PID_INPUT = 'pidi'
+PID_P_FACTOR = 'pidpf'
+PID_I_FACTOR = 'pidif'
+PID_D_FACTOR = 'piddf'
 
 # Значения запроса
 ON = 1
@@ -128,5 +133,18 @@ PLATFORMS = [
     'switch',
     'light',
     'fan',
-    'climate'
+    'climate',
+    'number'
 ]
+
+
+@dataclass(frozen=True)
+class PIDLimit:
+    """Лимиты для коэффициентов ПИД-регулятора."""
+    min_value: float
+    max_value: float
+
+
+PID_LIMIT_P = PIDLimit(min_value=0.01, max_value=100.0)
+PID_LIMIT_I = PIDLimit(min_value=0.01, max_value=10.0)
+PID_LIMIT_D = PIDLimit(min_value=0.01, max_value=10.0)
