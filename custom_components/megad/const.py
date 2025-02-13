@@ -145,6 +145,6 @@ class PIDLimit:
     max_value: float
 
 
-PID_LIMIT_P = PIDLimit(min_value=0.01, max_value=100.0)
-PID_LIMIT_I = PIDLimit(min_value=0.01, max_value=10.0)
-PID_LIMIT_D = PIDLimit(min_value=0.01, max_value=10.0)
+PID_LIMIT_P = PIDLimit(min_value=0.0, max_value=100.0)
+PID_LIMIT_I = PIDLimit(min_value=0.0, max_value=10.0)
+PID_LIMIT_D = PIDLimit(min_value=0.0, max_value=10.0)
