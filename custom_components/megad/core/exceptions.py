@@ -46,6 +46,11 @@ class InvalidPasswordMegad(HomeAssistantError):
     pass
 
 
+class NotAvailableURL(Exception):
+    """Адрес не доступен"""
+    pass
+
+
 class TemperatureOutOfRangeError(HomeAssistantError):
     """Задана температура не в пределах допустимого диапазона."""
 

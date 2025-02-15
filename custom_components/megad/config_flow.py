@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime
 from http import HTTPStatus
+from urllib.parse import urlparse
 
 import aiohttp
 import voluptuous as vol
@@ -11,7 +12,7 @@ from pydantic import ValidationError
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, ENTRIES
@@ -22,21 +23,38 @@ from .core.config_parser import (
 )
 from .core.exceptions import (InvalidIpAddress, WriteConfigError,
                               InvalidPassword, InvalidAuthorized, InvalidSlug,
-                              InvalidIpAddressExist)
+                              InvalidIpAddressExist, NotAvailableURL)
 from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def validate_ip_address(ip: str) -> None:
-    """Валидация ip адреса"""
-    regex = re.compile(
-        r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.)'
-        r'{3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:[0-9]{1,5})?$'
-    )
+async def validate_url(hass: HomeAssistant, user_input: str) -> str:
+    """Проверка доступности url"""
+    session = async_get_clientsession(hass)
+    _LOGGER.debug(f'Полученный URL: {user_input}')
+    if not user_input.startswith(('http://', 'https://')):
+        user_input = f'https://{user_input}'
 
-    if not re.fullmatch(regex, ip):
-        raise InvalidIpAddress
+    parsed_url = urlparse(user_input)
+    base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
+
+    if parsed_url.scheme == 'http':
+        urls = [base_url]
+    else:
+        urls = [base_url, base_url.replace('https://', 'http://')]
+
+    for url in urls:
+        try:
+            async with session.get(url, timeout=3) as response:
+                if response.status == 200:
+                    _LOGGER.debug(f'Преобразованный URL: {url}')
+                    return url
+        except Exception as err:
+            _LOGGER.info(f'Не удалось соединиться с URL: {url}. Ошибка: {err}')
+            continue
+
+    raise NotAvailableURL(f'Контроллер недоступен по {urls}')
 
 
 def check_exist_ip(ip: str, hass_data: dict) -> None:
@@ -83,7 +101,7 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
         return vol.Schema(
                 {
                     vol.Required(
-                        schema="ip", default=self.data.get(
+                        schema='ip', default=self.data.get(
                             'ip', DEFAULT_IP
                         )): str,
                     vol.Required(schema="password", default=self.data.get(
@@ -104,11 +122,9 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 }
         )
 
-    async def validate_user_input_step_main(self, user_input: dict) -> None:
-        ip = user_input['ip']
-        password = user_input['password']
-        url = f'http://{user_input["ip"]}/{user_input["password"]}/'
-        validate_ip_address(ip)
+    async def validate_user_input_step_main(
+            self, base_url: str, password: str) -> None:
+        url = f'{base_url}/{password}/'
         validate_long_password(password)
         await validate_password(
             url, async_get_clientsession(self.hass)
@@ -295,9 +311,10 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug(f'step_user: {user_input}')
             ip = user_input['ip']
             password = user_input['password']
-            url = f'http://{user_input["ip"]}/{user_input["password"]}/'
             try:
-                await self.validate_user_input_step_main(user_input)
+                base_url = await validate_url(self.hass, ip)
+                url = f'{base_url}/{user_input["password"]}/'
+                await self.validate_user_input_step_main(base_url, password)
                 if DOMAIN in self.hass.data:
                     check_exist_ip(ip, self.hass.data[DOMAIN][ENTRIES])
                 if not errors:
@@ -310,9 +327,9 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidIpAddressExist:
                 _LOGGER.error(f'IP адрес уже используется в интеграции: {ip}')
                 errors['base'] = 'ip_exist'
-            except InvalidIpAddress:
-                _LOGGER.error(f'Неверный формат ip адреса: {ip}')
-                errors['base'] = 'invalid_ip'
+            except NotAvailableURL:
+                _LOGGER.error(f'Адрес не доступен: {ip}')
+                errors['base'] = 'not_available_url'
             except InvalidPassword:
                 _LOGGER.error(f'Пароль длиннее 3х символов: {password}')
                 errors['base'] = 'invalid_password'
@@ -347,16 +364,17 @@ class OptionsFlowHandler(MegaDBaseFlow, config_entries.OptionsFlow):
             _LOGGER.debug(f'step_init: {user_input}')
             ip = user_input['ip']
             password = user_input['password']
-            url = f'http://{user_input["ip"]}/{user_input["password"]}/'
             try:
-                await self.validate_user_input_step_main(user_input)
+                base_url = await validate_url(self.hass, ip)
+                url = f'{base_url}/{user_input["password"]}/'
+                await self.validate_user_input_step_main(base_url, password)
                 if not errors:
                     self.data.update(user_input)
                     self.data.update({'url': url})
                 return await self.async_step_get_config()
-            except InvalidIpAddress:
-                _LOGGER.error(f'Неверный формат ip адреса: {ip}')
-                errors['base'] = 'invalid_ip'
+            except NotAvailableURL:
+                _LOGGER.error(f'Адрес не доступен: {ip}')
+                errors['base'] = 'not_available_url'
             except InvalidPassword:
                 _LOGGER.error(f'Пароль длиннее 3х символов: {password}')
                 errors['base'] = 'invalid_password'
