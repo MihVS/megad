@@ -42,9 +42,10 @@ class MegadHttpView(HomeAssistantView):
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')
             return Response(status=HTTPStatus.NOT_FOUND)
 
-        if state_megad is not None:
+        if state_megad == '1':
             _LOGGER.info(f'megad-{id_megad} был перезагружен')
             await coordinator.restore_status_ports()
+            await coordinator.megad.set_current_time()
 
         if port_id is not None:
             await coordinator.update_port_state(port_id=port_id, data=params)

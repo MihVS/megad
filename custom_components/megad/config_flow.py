@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import re
 from datetime import datetime
 from http import HTTPStatus
 from urllib.parse import urlparse
@@ -21,7 +20,7 @@ from .core.config_parser import (
     async_read_configuration, write_config_megad, async_get_page_config,
     get_slug_server, create_config_megad
 )
-from .core.exceptions import (InvalidIpAddress, WriteConfigError,
+from .core.exceptions import (WriteConfigError,
                               InvalidPassword, InvalidAuthorized, InvalidSlug,
                               InvalidIpAddressExist, NotAvailableURL)
 from .core.utils import get_list_config_megad

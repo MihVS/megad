@@ -54,6 +54,7 @@ START_CONFIG = 0
 MAIN_CONFIG = 1
 ID_CONFIG = 2
 VIRTUAL_PORTS_CONFIG = 5
+CRON = 7
 
 # Параметры ПИД
 P_FACTOR = 'p_factor'
@@ -85,6 +86,7 @@ PID_INPUT = 'pidi'
 PID_P_FACTOR = 'pidpf'
 PID_I_FACTOR = 'pidif'
 PID_D_FACTOR = 'piddf'
+SET_TIME = 'stime'
 
 # Значения запроса
 ON = 1

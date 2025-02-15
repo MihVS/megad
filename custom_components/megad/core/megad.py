@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import logging
 from http import HTTPStatus
 from typing import Union
@@ -29,7 +30,7 @@ from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
     SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
-    PID_SET_POINT, PID_INPUT, PID_OFF
+    PID_SET_POINT, PID_INPUT, PID_OFF, CRON, SET_TIME
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class MegaD:
 
     async def update_data(self):
         """Обновление всех данных контроллера."""
-
+        await self.update_current_time()
         await self.update_ports()
         if self.request_count == COUNT_UPDATE:
             self.request_count = 0
@@ -116,6 +117,14 @@ class MegaD:
         if self.pids:
             await self.update_pids()
         self.request_count += 1
+
+    async def update_current_time(self):
+        """Синхронизирует время контроллера с сервером раз в сутки"""
+        now = datetime.now().time()
+        control_time_min = datetime.strptime("02:00", "%H:%M").time()
+        control_time_max = datetime.strptime("02:01", "%H:%M").time()
+        if control_time_max > now >= control_time_min:
+            await self.set_current_time()
 
     async def update_pids(self):
         """Обновление данных ПИД регуляторов"""
@@ -294,6 +303,16 @@ class MegaD:
             case _:
                 _LOGGER.debug(f'Параметры ПИД №{pid_id} (MegaD-{self.id}) '
                               f'успешно изменены на {commands}')
+
+    async def set_current_time(self):
+        """Установка текущего времени сервера на контроллер"""
+        now = datetime.now()
+        formatted_time = now.strftime("%H:%M:%S:") + str(now.isoweekday())
+        params = {CONFIG: CRON, SET_TIME: formatted_time}
+        response = await self.request_to_megad(params)
+        if response.status == HTTPStatus.OK:
+            _LOGGER.debug(f'Время контроллера синхронизировано: '
+                          f'{formatted_time}')
 
     async def set_temperature_pid(self, pid_id, temperature):
         """Установка заданной температуры ПИД регулятора"""
