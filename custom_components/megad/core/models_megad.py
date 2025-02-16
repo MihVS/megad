@@ -95,6 +95,30 @@ class PIDConfig(BaseModel):
             return 255
         return int(value)
 
+    @field_validator('set_point', mode='before')
+    def validate_set_point(cls, value):
+        if value == '':
+            return 0
+        return float(value)
+
+    @field_validator('p_factor', mode='before')
+    def validate_p_factor(cls, value):
+        if value == '':
+            return 0
+        return float(value)
+
+    @field_validator('i_factor', mode='before')
+    def validate_i_factor(cls, value):
+        if value == '':
+            return 0
+        return float(value)
+
+    @field_validator('d_factor', mode='before')
+    def validate_d_factor(cls, value):
+        if value == '':
+            return 0
+        return float(value)
+
     @field_validator('cycle_time', mode='before')
     def validate_cycle_time(cls, value):
         if value == '':

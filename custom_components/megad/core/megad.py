@@ -42,7 +42,8 @@ class MegaD:
     def __init__(
             self,
             hass: HomeAssistant,
-            config: DeviceMegaD
+            config: DeviceMegaD,
+            url: str
     ):
         self.hass = hass
         self.session = async_get_clientsession(hass)
@@ -54,8 +55,7 @@ class MegaD:
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor
         ]] = []
-        self.url = (f'http://{self.config.plc.ip_megad}/'
-                    f'{self.config.plc.password}/')
+        self.url: str = url
         self.uptime: int = 0
         self.temperature: float = 0
         self.software: str | None = None

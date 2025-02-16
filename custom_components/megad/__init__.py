@@ -59,8 +59,9 @@ async def async_setup_entry(
     entry_id = config_entry.entry_id
     _LOGGER.debug(f'Entry_id {entry_id}')
     file_path = config_entry.data.get('file_path')
+    url = config_entry.data.get('url')
     megad_config = await create_config_megad(file_path)
-    megad = MegaD(hass=hass, config=megad_config)
+    megad = MegaD(hass=hass, config=megad_config, url=url)
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})
