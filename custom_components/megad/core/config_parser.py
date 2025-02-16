@@ -65,6 +65,7 @@ def get_set_temp_thermostat(page: str) -> float:
     val_input = soup.find('input', {'name': 'misc'})
     return float(val_input.get('value'))
 
+
 def get_uptime(page_cf: str) -> int:
     """Получить время работы контроллера в минутах"""
     soup = BeautifulSoup(page_cf, 'lxml')
@@ -266,20 +267,6 @@ def decode_emt(input_string: str) -> str:
         return output_string[:-1]
     else:
         return input_string
-
-
-# def check_config_pid(params: dict) -> bool:
-#     """Проверяет правильность настройки ПИД что бы добавить устройство"""
-#     check_sensor = False
-#     check_output = False
-#     title = params.get('pidt', '')
-#     if title.count('/') > 1:
-#         sensor_id = title.split('/')[2]
-#         if sensor_id.isdigit():
-#             check_sensor = True
-#     if params.get('pido'):
-#         check_output = True
-#     return check_sensor and check_output
 
 
 async def create_config_megad(file_path: str) -> DeviceMegaD:
