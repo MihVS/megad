@@ -110,6 +110,7 @@ async def get_slug_server(page_cf: str) -> str:
 
 
 async def async_parse_pages(url: str, session: aiohttp.ClientSession):
+    """Возвращает список базовых ссылок конфигураций контроллера"""
     pages = ["cf=1", "cf=2", "cf=7", "cf=8"]
 
     first_page = await async_fetch_page(url, session)
@@ -129,7 +130,7 @@ async def async_parse_pages(url: str, session: aiohttp.ClientSession):
     pages.extend(f"cf=6&sc={i}" for i in range(5))
     pages.extend(f"cf=6&el={i}" for i in range(16))
 
-    return url, pages
+    return pages
 
 
 def get_params(page: str) -> str:
@@ -172,16 +173,22 @@ def get_params_pid(page: str) -> dict:
 
 
 async def async_process_page(
-        base_url: str, page, fh, check: bool, session: aiohttp.ClientSession):
-    page_content = await async_fetch_page(f"{base_url}?{page}", session)
+        base_url: str,
+        page_link,
+        fh,
+        check: bool,
+        session: aiohttp.ClientSession
+):
+    """Получает url настроек для файла конфигурации. Запись в файл."""
+    page_content = await async_fetch_page(f"{base_url}?{page_link}", session)
     if not page_content:
         return
-    url = get_params(page_content)
-    if url and url != 'cf=<br':
-        if not _check_url(url, check):
-            url = url + '&nr=1'
-            url = decode_emt(url)
-        await fh.write(url + "\n")
+    conf_url = get_params(page_content)
+    if conf_url and conf_url != 'cf=<br':
+        if not _check_url(conf_url, check):
+            conf_url = conf_url + '&nr=1'
+            conf_url = decode_emt(conf_url)
+        await fh.write(conf_url + "\n")
 
 
 def _check_url(url: str, check: bool) -> bool:
@@ -190,23 +197,28 @@ def _check_url(url: str, check: bool) -> bool:
     return True if "cf=1&" in url else False
 
 
+def _check_extend(conf_url):
+    """Проверяет подключение к порту расширителя I2C"""
+    pass
+
+
 async def async_read_configuration(
         url: str, name_file: str, session: aiohttp.ClientSession, path):
     """Чтение конфигурации с контроллера и запись её в файл"""
-    base_url, pages = await async_parse_pages(url, session)
+    page_links = await async_parse_pages(url, session)
+    base_url = url
     os.makedirs(os.path.dirname(path), exist_ok=True)
     name_file = os.path.join(path, name_file)
-
-    count_line = len(pages)
+    count_line = len(page_links)
     i = 1
 
     async with aiofiles.open(name_file, 'w', encoding='cp1251') as fh:
-        for page in pages:
+        for page_link in page_links:
             check = False
             if i == count_line:
                 check = True
             i += 1
-            await async_process_page(base_url, page, fh, check, session)
+            await async_process_page(base_url, page_link, fh, check, session)
 
 
 async def send_line(url: str, line: str, session: aiohttp.ClientSession):
@@ -221,7 +233,6 @@ async def send_line(url: str, line: str, session: aiohttp.ClientSession):
 
 async def async_read_config_file(file_path: str) -> list[str]:
     """Читает файл конфигурации и возвращает список строк"""
-
     async with aiofiles.open(file_path, "r", encoding="cp1251") as file:
         return await file.readlines()
 
