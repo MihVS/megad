@@ -16,9 +16,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, ENTRIES
 )
+from .core.config_manager import MegaDConfigManager
 from .core.config_parser import (
-    async_read_configuration, write_config_megad, async_get_page_config,
-    get_slug_server, create_config_megad
+    async_get_page_config, get_slug_server
 )
 from .core.exceptions import (WriteConfigError,
                               InvalidPassword, InvalidAuthorized, InvalidSlug,
@@ -90,11 +90,12 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
 
     data = {}
 
-    def get_path_to_config(self) -> str:
+    def get_path_to_config(self, name_config='') -> str:
         """Возвращает путь до каталога с настройками контроллера"""
-        config_path = self.hass.config.path(PATH_CONFIG_MEGAD)
-        os.makedirs(config_path, exist_ok=True)
-        return config_path
+        configs_path = self.hass.config.path(PATH_CONFIG_MEGAD)
+        os.makedirs(configs_path, exist_ok=True)
+        path = os.path.join(configs_path, name_config)
+        return str(path)
 
     def data_schema_main(self):
         return vol.Schema(
@@ -171,19 +172,18 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
             if user_input.get('return_main_menu', False):
                 return await self.async_step_get_config()
             try:
-                await validate_slug(
-                    self.data.get('url'),
-                    async_get_clientsession(self.hass)
-                )
+                url = self.data.get('url')
+                session = async_get_clientsession(self.hass)
+                await validate_slug(url, session)
                 name_file = user_input.get('config_list')
-                file_path = str(os.path.join(
-                    self.get_path_to_config(), name_file)
-                )
+                file_path = self.get_path_to_config(name_file)
                 self.data['file_path'] = file_path
                 self.data['name_file'] = name_file
                 _LOGGER.debug(f'file_path: {file_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
-                megad_config = await create_config_megad(file_path)
+                manager_config = MegaDConfigManager(url, file_path, session)
+                await manager_config.read_config_file(file_path)
+                megad_config = await manager_config.create_config_megad()
                 json_data = megad_config.model_dump_json(indent=2)
                 _LOGGER.debug(f'megad_config_json: \n{json_data}')
                 if self.data.get('options'):
@@ -233,13 +233,16 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
             if user_input.get('return_main_menu', False):
                 return await self.async_step_get_config()
             try:
-                await async_read_configuration(
+                name_file = user_input.get('name_file')
+                config_path = self.get_path_to_config(name_file)
+                config_manager = MegaDConfigManager(
                     self.data['url'],
-                    user_input.get('name_file'),
-                    async_get_clientsession(self.hass),
-                    self.get_path_to_config()
+                    config_path,
+                    async_get_clientsession(self.hass)
                 )
-                self.data['name_file'] = user_input.get('name_file')
+                await config_manager.read_config()
+                await config_manager.save_config_to_file()
+                self.data['name_file'] = name_file
                 return await self.async_step_select_config()
             except aiohttp.ClientError as e:
                 _LOGGER.error(f'Ошибка запроса к контроллеру '
@@ -266,14 +269,16 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 return await self.async_step_get_config()
             try:
                 name_file = user_input.get('config_list')
-                file_path = os.path.join(self.get_path_to_config(), name_file)
-                _LOGGER.debug(f'file_path: {file_path}')
+                config_path = self.get_path_to_config(name_file)
+                _LOGGER.debug(f'file_path: {config_path}')
                 _LOGGER.debug(f'name_file: {name_file}')
-                await write_config_megad(
-                    str(file_path),
+                config_manager = MegaDConfigManager(
                     self.data['url'],
+                    config_path,
                     async_get_clientsession(self.hass)
                 )
+                await config_manager.read_config_file(config_path)
+                await config_manager.upload_config()
                 return await self.async_step_get_config()
             except WriteConfigError as e:
                 _LOGGER.error(f'Ошибка записи конфигурации в контроллер: {e}')

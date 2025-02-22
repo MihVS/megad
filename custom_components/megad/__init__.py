@@ -18,7 +18,7 @@ from .const import (
     OFF
 )
 from .core.base_ports import OneWireSensorPort
-from .core.config_parser import create_config_megad
+from .core.config_manager import MegaDConfigManager
 from .core.enums import ModeInMegaD, TypePortMegaD
 from .core.exceptions import InvalidSettingPort
 from .core.megad import MegaD
@@ -60,7 +60,11 @@ async def async_setup_entry(
     _LOGGER.debug(f'Entry_id {entry_id}')
     file_path = config_entry.data.get('file_path')
     url = config_entry.data.get('url')
-    megad_config = await create_config_megad(file_path)
+    manager_config = MegaDConfigManager(
+        url, file_path, hass.helpers.aiohttp_client.async_get_clientsession()
+    )
+    await manager_config.read_config_file(file_path)
+    megad_config = await manager_config.create_config_megad()
     megad = MegaD(hass=hass, config=megad_config, url=url)
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()

@@ -4,11 +4,25 @@ import os
 import aiohttp
 import aiofiles
 import asyncio
+import logging
+
+import async_timeout
+from aiohttp import ClientResponse
 
 from bs4 import BeautifulSoup
 from urllib.parse import parse_qsl
 
-from const_parse import *
+from .models_megad import (
+    DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
+    PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
+    WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
+    AnalogPortConfig, SystemConfigMegaD, PIDConfig
+)
+from .exceptions import WriteConfigError
+from .const_parse import *
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class MegaDConfigManager:
@@ -23,12 +37,24 @@ class MegaDConfigManager:
         self.config_file_path = config_file_path
         self.session = session
         self.settings = []
+        self.len_main_settings = 0
+
+    async def request_to_megad(self, params: dict | str) -> ClientResponse:
+        """Отправка запроса к контроллеру"""
+        async with async_timeout.timeout(TIME_OUT_UPDATE):
+            if isinstance(params, str):
+                response = await self.session.get(url=f'{self.url}?{params}')
+            else:
+                response = await self.session.get(url=self.url, params=params)
+        return response
 
     async def fetch_page(self, params: dict) -> str:
         """Получает страницу конфигурации контроллера."""
-        async with self.session.get(url=self.url, params=params) as response:
-            page = await response.text(encoding='cp1251')
-            return page
+        _LOGGER.debug(f'Запрос конфигурации контроллера MegaD. '
+                      f'URL: {self.url}, params: {params}')
+        response = await self.request_to_megad(params)
+        page = await response.text(encoding='cp1251')
+        return page
 
     async def get_base_params(self) -> list[dict]:
         """Получает список параметров для базовых запросов конфигурации"""
@@ -86,19 +112,23 @@ class MegaDConfigManager:
     @staticmethod
     def decode_title(input_string: str) -> str:
         """Преобразует поле title в правильную кодировку для Русского языка"""
-        teg = f'&{TITLE}'
-
-        if teg in input_string:
+        if '&emt' in input_string:
+            title = 'emt'
+        elif '&pidt' in input_string:
+            title = 'pidt'
+        else:
+            title = ''
+        if title:
             query_params = dict(parse_qsl(
                 input_string, keep_blank_values=True)
             )
-            emt_value = query_params[TITLE]
-            emt_value_cp1251 = emt_value.encode('cp1251')
-            emt_value_urlencoded = ''.join(
+            title_value = query_params[title]
+            title_value_cp1251 = title_value.encode('cp1251')
+            title_value_urlencoded = ''.join(
                 f'%{hex(b)[2:].upper()}' if (b > 127) or (b in b' #%&+?/'
-                    ) else chr(b) for b in emt_value_cp1251
+                  ) else chr(b) for b in title_value_cp1251
             )
-            query_params[TITLE] = emt_value_urlencoded
+            query_params[title] = title_value_urlencoded
             output_string = ''
 
             for key, value in query_params.items():
@@ -124,7 +154,6 @@ class MegaDConfigManager:
         type_device = params.get(TYPE_DEVICE)
         if type_port == I2C and type_device in (PCA9685, MCP230XX):
             return int(params.get(PORT_NUMBER))
-
 
     async def process_page(self, params, check: bool) -> str:
         """Получает url настроек для файла конфигурации."""
@@ -181,17 +210,80 @@ class MegaDConfigManager:
             for line in self.settings:
                 await fh.write(line)
 
+    async def set_config(self, line_config: str):
+        """Отправка настроек контроллера в виде строки по URL."""
+        _LOGGER.warning(line_config)
+        try:
+            _LOGGER.debug(f'Попытка записи конфигурации на контроллер. '
+                          f'URL: {self.url}, params: {line_config}')
+            response = await self.request_to_megad(line_config)
+            _LOGGER.debug(f'Статус: {response.status}. Ответ контроллера: '
+                          f'{await response.text(encoding="cp1251")}')
+        except Exception as e:
+            raise WriteConfigError(e)
 
-async def main():
-    # url = 'http://192.168.113.44/sec/'
-    url = 'https://103.megadev.keenetic.pro/sec/'
-    async with aiohttp.ClientSession() as session:
-        manager = MegaDConfigManager(url, './aaa', session)
-        await manager.read_config()
-        await manager.save_config_to_file()
-        # for line in manager.settings:
-        #     print(line)
+    async def upload_config(self):
+        """Загрузка конфигурации на контроллер"""
+        len_config = len(self.settings)
+        for config in self.settings:
+            config = config.strip()
+            if not config:
+                continue
+            await self.set_config(config)
+            if 'nr=1' not in config:
+                await asyncio.sleep(1)
 
+    async def read_config_file(self, path: str):
+        """Читает конфигурацию из файла и обновляет её у объекта"""
+        async with aiofiles.open(path, "r", encoding="cp1251") as file:
+            self.settings = await file.readlines()
+            _LOGGER.debug(f'Прочитана конфигурация MegaD из файла: {path}')
 
-if __name__ == '__main__':
-    asyncio.run(main())
+    async def create_config_megad(self) -> DeviceMegaD:
+        """Создаёт конфигурацию контроллера."""
+        ports = []
+        pids = []
+        configs = {}
+        _LOGGER.warning(f'settings: {self.settings}')
+        for setting in self.settings:
+            params = dict(
+                parse_qsl(setting, keep_blank_values=True, encoding='cp1251')
+            )
+            if params.get('cf', '') in ('1', '2'):
+                configs = configs | params
+            elif params.get('pty') == '255':
+                ports.append(PortConfig(**params))
+            elif params.get('pty') == '0':
+                ports.append(PortInConfig(**params))
+            elif params.get('pty') == '1':
+                if params.get('m') in ('0', '3'):
+                    ports.append(PortOutRelayConfig(**params))
+                elif params.get('m') == '1':
+                    ports.append(PortOutPWMConfig(**params))
+            elif params.get('pty') == '3':
+                if params.get('d') == '3':
+                    ports.append(OneWireSensorConfig(**params))
+                elif params.get('d') == '4':
+                    ports.append(IButtonConfig(**params))
+                elif params.get('d') == '6':
+                    if params.get('m') == '1':
+                        ports.append(WiegandD0Config(**params))
+                    else:
+                        ports.append(WiegandConfig(**params))
+                elif params.get('d') in ('1', '2'):
+                    ports.append(DHTSensorConfig(**params))
+                else:
+                    ports.append(PortSensorConfig(**params))
+            elif params.get('pty') == '4':
+                if params.get('m') == '1':
+                    ports.append(I2CSDAConfig(**params))
+                else:
+                    ports.append(I2CConfig(**params))
+            elif params.get('pty') == '2':
+                ports.append(AnalogPortConfig(**params))
+            elif params.get('cf') == '11':
+                pids.append(PIDConfig(**params))
+
+        return DeviceMegaD(
+            plc=SystemConfigMegaD(**configs), pids=pids, ports=ports
+        )
