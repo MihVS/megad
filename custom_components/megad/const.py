@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 from .core.enums import DeviceClassClimate
 from homeassistant.const import (
-    UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime
+    UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime,
+    UnitOfPressure
 )
 from homeassistant.components.sensor.const import SensorDeviceClass
 
@@ -35,12 +36,14 @@ TEMPERATURE = 'temp'
 HUMIDITY = 'hum'
 CO2 = 'CO2'
 UPTIME = 'uptime'
+PRESSURE = 'press'
 
 # Перевод сенсоров
 TYPE_SENSOR_RUS = {
     TEMPERATURE: 'температура',
     HUMIDITY: 'влажность',
-    CO2: 'CO2'
+    CO2: 'CO2',
+    PRESSURE: 'давление'
 }
 
 STATUS_THERMO = 'status_thermo'
@@ -108,6 +111,7 @@ SENSOR_UNIT = {
     TEMPERATURE: UnitOfTemperature.CELSIUS,
     HUMIDITY: PERCENTAGE,
     CO2: CONCENTRATION_PARTS_PER_MILLION,
+    PRESSURE: UnitOfPressure.MMHG,
     UPTIME: UnitOfTime.MINUTES
 }
 
@@ -115,6 +119,7 @@ SENSOR_CLASS = {
     TEMPERATURE: SensorDeviceClass.TEMPERATURE,
     HUMIDITY: SensorDeviceClass.HUMIDITY,
     CO2: SensorDeviceClass.CO2,
+    PRESSURE: SensorDeviceClass.PRESSURE,
     UPTIME: SensorDeviceClass.DURATION
 }
 

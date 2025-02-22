@@ -13,7 +13,8 @@ from .base_pids import PIDControl
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D
+    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D,
+    I2CSensorMBx280
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -53,7 +54,8 @@ class MegaD:
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-            I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor
+            I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
+            I2CSensorMBx280
         ]] = []
         self.url: str = url
         self.uptime: int = 0
@@ -246,6 +248,8 @@ class MegaD:
                         self.ports.append(I2CSensorSTH31(port, self.id))
                     case DeviceI2CMegaD.HTU21D:
                         self.ports.append(I2CSensorHTU21D(port, self.id))
+                    case DeviceI2CMegaD.BMx280:
+                        self.ports.append(I2CSensorMBx280(port, self.id))
             elif port.type_port == TypePortMegaD.ADC:
                 self.ports.append(AnalogSensor(port, self.id))
 

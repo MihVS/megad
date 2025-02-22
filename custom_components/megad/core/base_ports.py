@@ -13,7 +13,7 @@ from .models_megad import (
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
-    PORT, NOT_AVAILABLE
+    PORT, NOT_AVAILABLE, PRESSURE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -511,23 +511,23 @@ class OneWireBusSensorPort(DigitalSensorBase):
         return states
 
 
-class I2CSensorSCD4x(DigitalSensorBase):
-    """Класс для сенсора типа SCD4x I2C интерфейса"""
+class I2CSensorXXX(DigitalSensorBase):
+    """Класс для сенсора I2C интерфейса"""
 
     def __init__(self, conf: I2CConfig, megad_id):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
 
-    def short_data(self, data):
+    def parse_data(self, data, keys):
         """
-        Обработка короткой записи данных сенсора
-        data: 980/25/38
+        Общий метод обработки данных.
+        data: Х/Х/Х
         """
         try:
-            co2, temp, hum = data.split('/')
-            self._state[CO2] = co2
-            self._state[TEMPERATURE] = temp
-            self._state[HUMIDITY] = hum
+            values = data.split('/')
+            if len(values) != len(keys):
+                raise ValueError
+            self._state.update(dict(zip(keys, values)))
         except ValueError:
             _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
                             f'port{self.conf.id}: {data}')
@@ -537,6 +537,28 @@ class I2CSensorSCD4x(DigitalSensorBase):
         if data:
             if len(data.split('/')) != 3:
                 raise TypeSensorError
+
+
+class I2CSensorSCD4x(I2CSensorXXX):
+    """Класс для сенсора типа SCD4x I2C интерфейса"""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 980/25/38
+        """
+        self.parse_data(data, [CO2, TEMPERATURE, HUMIDITY])
+
+
+class I2CSensorMBx280(I2CSensorXXX):
+    """Класс для сенсора типа MBx280 I2C интерфейса"""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 25.5/754.86/22.59
+        """
+        self.parse_data(data, [TEMPERATURE, PRESSURE, HUMIDITY])
 
 
 class I2CSensorSTH31(TempHumSensor):

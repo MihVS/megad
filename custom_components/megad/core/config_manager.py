@@ -224,7 +224,6 @@ class MegaDConfigManager:
 
     async def upload_config(self):
         """Загрузка конфигурации на контроллер"""
-        len_config = len(self.settings)
         for config in self.settings:
             config = config.strip()
             if not config:
@@ -244,7 +243,6 @@ class MegaDConfigManager:
         ports = []
         pids = []
         configs = {}
-        _LOGGER.warning(f'settings: {self.settings}')
         for setting in self.settings:
             params = dict(
                 parse_qsl(setting, keep_blank_values=True, encoding='cp1251')

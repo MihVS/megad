@@ -10,17 +10,30 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
-    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS
+    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
-    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D
+    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D, I2CSensorMBx280
 )
 from .core.megad import MegaD
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def create_temp_hum(sensors, entry_id, coordinator, megad, port):
+    """Создаём сенсоры температуры и влажности."""
+    unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                      f'{TEMPERATURE}')
+    sensors.append(SensorMegaD(
+        coordinator, port, unique_id_temp, TEMPERATURE)
+    )
+    unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
+    sensors.append(SensorMegaD(
+        coordinator, port, unique_id_hum, HUMIDITY)
+    )
 
 
 async def async_setup_entry(
@@ -50,15 +63,7 @@ async def async_setup_entry(
                 coordinator, port, unique_id, TEMPERATURE)
             )
         if isinstance(port, (DHTSensorPort, I2CSensorSTH31, I2CSensorHTU21D)):
-            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                              f'{TEMPERATURE}')
-            sensors.append(SensorMegaD(
-                coordinator, port, unique_id_temp, TEMPERATURE)
-            )
-            unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
-            sensors.append(SensorMegaD(
-                coordinator, port, unique_id_hum, HUMIDITY)
-            )
+            create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, OneWireBusSensorPort):
             for id_one_wire in port.state:
                 unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
@@ -72,15 +77,14 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id_co2, CO2)
             )
-            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                              f'{TEMPERATURE}')
+            create_temp_hum(sensors, entry_id, coordinator, megad, port)
+        if isinstance(port, I2CSensorMBx280):
+            unique_id_press = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                               f'{PRESSURE}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_temp, TEMPERATURE)
+                coordinator, port, unique_id_press, PRESSURE)
             )
-            unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
-            sensors.append(SensorMegaD(
-                coordinator, port, unique_id_hum, HUMIDITY)
-            )
+            create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, AnalogSensor):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'
             sensors.append(AnalogSensorMegaD(coordinator, port, unique_id))
