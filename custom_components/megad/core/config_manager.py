@@ -1,26 +1,22 @@
-import re
-import os
-
-import aiohttp
-import aiofiles
 import asyncio
 import logging
-
-import async_timeout
-from aiohttp import ClientResponse
-
-from bs4 import BeautifulSoup
+import re
 from urllib.parse import parse_qsl
 
+import aiofiles
+import aiohttp
+import async_timeout
+from aiohttp import ClientResponse
+from bs4 import BeautifulSoup
+
+from .const_parse import *
+from .exceptions import WriteConfigError
 from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
     WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
     AnalogPortConfig, SystemConfigMegaD, PIDConfig
 )
-from .exceptions import WriteConfigError
-from .const_parse import *
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -166,6 +162,7 @@ class MegaDConfigManager:
                 conf_url = conf_url + '&nr=1'
                 conf_url = self.decode_title(conf_url)
             return conf_url + '\n'
+        return ''
 
     async def add_extra_config(self, extended_ports: list):
         """Добавляет порты расширителей к настройкам конфигурации"""

@@ -43,20 +43,20 @@ class SystemConfigMegaD(BaseModel):
         return new_value
 
 
-class AddNameMixin:
-    """Добавляет название устройства из Title"""
-
-    name: str = Field(default='')
-
-    @model_validator(mode='before')
-    def add_name(cls, data):
-        title = data.get('pidt', '')
-        name = title.split('/')[0]
-        if name:
-            data['name'] = name
-        else:
-            data['name'] = f'port{data["pn"]}'
-        return data
+# class AddNameMixin:
+#     """Добавляет название устройства из Title"""
+#
+#     name: str = Field(default='')
+#
+#     @model_validator(mode='before')
+#     def add_name(cls, data):
+#         title = data.get('pidt', '')
+#         name = title.split('/')[0]
+#         if name:
+#             data['name'] = name
+#         else:
+#             data['name'] = f'port{data["pn"]}'
+#         return data
 
 
 class PIDConfig(BaseModel):
@@ -237,24 +237,10 @@ class ActionPortMixin:
         return TypeNetActionMegaD.get_value(value)
 
 
-class PortInConfig(InverseValueMixin, ActionPortMixin):
-    """Конфигурация портов цифровых входов"""
+class BinaryDeviceClassMixin:
+    """Добавляет класс устройства для бинарного сенсора."""
 
-    mode: ModeInMegaD = Field(alias='m')
-    always_send_to_server: bool = Field(alias='misc', default=False)
     device_class: DeviceClassBinary = DeviceClassBinary.NONE
-
-    @field_validator('mode', mode='before')
-    def convert_mode(cls, value):
-        return ModeInMegaD.get_value(value)
-
-    @field_validator('always_send_to_server', mode='before')
-    def convert_always_send_to_server(cls, value):
-        match value:
-            case 'on':
-                return True
-            case _:
-                return False
 
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):
@@ -275,6 +261,25 @@ class PortInConfig(InverseValueMixin, ActionPortMixin):
                 return DeviceClassBinary.WINDOW
             case _:
                 return DeviceClassBinary.NONE
+
+
+class PortInConfig(InverseValueMixin, ActionPortMixin, BinaryDeviceClassMixin):
+    """Конфигурация портов цифровых входов"""
+
+    mode: ModeInMegaD = Field(alias='m')
+    always_send_to_server: bool = Field(alias='misc', default=False)
+
+    @field_validator('mode', mode='before')
+    def convert_mode(cls, value):
+        return ModeInMegaD.get_value(value)
+
+    @field_validator('always_send_to_server', mode='before')
+    def convert_always_send_to_server(cls, value):
+        match value:
+            case 'on':
+                return True
+            case _:
+                return False
 
 
 class PortOutConfig(DeviceClassConfig):
@@ -442,6 +447,7 @@ class I2CSDAConfig(I2CConfig):
     scl: int = Field(alias='misc', default=0, ge=0, le=255)
     category: CategoryI2CMegaD | str = Field(alias='gr', default='')
     device: DeviceI2CMegaD = Field(alias='d', default=DeviceI2CMegaD.NC)
+    interrupt: int | None = Field(alias='inta', default=None)
 
     @field_validator('category', mode='before')
     def convert_category(cls, value):
@@ -451,9 +457,105 @@ class I2CSDAConfig(I2CConfig):
     def convert_device(cls, value):
         return DeviceI2CMegaD.get_value(value)
 
+    @field_validator('interrupt', mode='before')
+    def validate_interrupt(cls, value):
+        try:
+            value = int(value)
+        except ValueError:
+            return None
+        return value
+
 
 class AnalogPortConfig(PortConfig, ModeControlSensorMixin):
     """Конфигурация аналогового порта"""
+
+
+class ExtraPortConfig(BaseModel):
+    """Базовый класс для всех портов расширителя I2C"""
+
+    id: int = Field(alias='ext', ge=0, le=255)
+    base_port: int = Field(alias='pt', ge=0, le=255)
+    title: str = Field(alias='ept', default='')
+    name: str = Field(default='')
+
+    @model_validator(mode='before')
+    def add_name(cls, data):
+        title = data.get('ept', '')
+        name = title.split('/')[0]
+        if name:
+            data['name'] = name
+        else:
+            data['name'] = f'port{data["pt"]}_ext{data["ext"]}'
+        return data
+
+
+class ExtraDeviceClassConfig(ExtraPortConfig):
+    """Добавляет поле класса устройства для НА у портов расширителя"""
+
+    device_class: str = ''
+
+    @model_validator(mode='before')
+    def add_device_class(cls, data):
+        title = data.get('ept', '')
+        if title.count('/') > 0:
+            device_class = title.split('/')[1]
+            data.update({'device_class': device_class})
+        return data
+
+
+class ExtraInverseValueMixin(ExtraDeviceClassConfig):
+    """
+    Добавляет функционал инверсии значения порта для НА у портов расширителя
+    """
+
+    inverse: bool = False
+
+    @model_validator(mode='before')
+    def add_inverse(cls, data):
+        print(data)
+        title = data.get('ept', '')
+        if title.count('/') > 1:
+            inverse = title.split('/')[2]
+            data.update({'inverse': inverse})
+        return data
+
+    @field_validator('inverse', mode='before')
+    def set_inverse(cls, value):
+        match value:
+            case '1':
+                return True
+            case _:
+                return False
+
+
+class ExtraActionPortMixin:
+    """Конфигурация действия порта"""
+
+    action: str = Field(alias='eact', default='')
+    execute_action: bool = Field(alias='epf', default=False)
+
+    @field_validator('execute_action', mode='before')
+    def convert_execute_action(cls, value):
+        match value:
+            case 'on' | '1' | 1:
+                return True
+            case '':
+                return False
+
+
+class MCP230Relay(ExtraInverseValueMixin):
+    """Релейный выход модуля расширения."""
+
+
+class MCP230PortIn(
+    ExtraInverseValueMixin, ExtraActionPortMixin, BinaryDeviceClassMixin):
+    """Конфигурация портов цифровых входов модуля расширения."""
+
+    mode: ModeInMegaD = Field(alias='emode')
+
+    @field_validator('mode', mode='before')
+    def convert_mode(cls, value):
+        return ModeInMegaD.get_value(value)
 
 
 class DeviceMegaD(BaseModel):
@@ -465,3 +567,4 @@ class DeviceMegaD(BaseModel):
         DHTSensorConfig, IButtonConfig, WiegandConfig, WiegandD0Config,
         I2CConfig, I2CSDAConfig, AnalogPortConfig
     ]]
+    extra_ports: list[Union[MCP230Relay, MCP230PortIn]] = []
