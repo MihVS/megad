@@ -10,12 +10,15 @@ from aiohttp import ClientResponse
 from bs4 import BeautifulSoup
 
 from .const_parse import *
+from .enums import TypePortMegaD, TypeDSensorMegaD, ModeOutMegaD, \
+    ModeWiegandMegaD, ModeI2CMegaD
 from .exceptions import WriteConfigError
 from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
     WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
-    AnalogPortConfig, SystemConfigMegaD, PIDConfig
+    AnalogPortConfig, SystemConfigMegaD, PIDConfig, PCA9685PWMConfig,
+    PCA9685RelayConfig, MCP230PortInConfig, MCP230RelayConfig
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -238,47 +241,68 @@ class MegaDConfigManager:
     async def create_config_megad(self) -> DeviceMegaD:
         """Создаёт конфигурацию контроллера."""
         ports = []
+        extra_ports = []
         pids = []
         configs = {}
         for setting in self.settings:
             params = dict(
                 parse_qsl(setting, keep_blank_values=True, encoding='cp1251')
             )
-            if params.get('cf', '') in ('1', '2'):
+            if params.get(CONFIG, '') in (MAIN_CONFIG, ID_CONFIG):
                 configs = configs | params
-            elif params.get('pty') == '255':
+            elif params.get(TYPE_PORT) == TypePortMegaD.NC.value_plc:
                 ports.append(PortConfig(**params))
-            elif params.get('pty') == '0':
+            elif params.get(TYPE_PORT) == TypePortMegaD.IN.value_plc:
                 ports.append(PortInConfig(**params))
-            elif params.get('pty') == '1':
-                if params.get('m') in ('0', '3'):
+            elif params.get(TYPE_PORT) == TypePortMegaD.OUT.value_plc:
+                if params.get(MODE) in (
+                        ModeOutMegaD.SW.value_plc,
+                        ModeOutMegaD.SW_LINK.value_plc
+                ):
                     ports.append(PortOutRelayConfig(**params))
-                elif params.get('m') == '1':
+                elif params.get(MODE) == ModeOutMegaD.PWM.value_plc:
                     ports.append(PortOutPWMConfig(**params))
-            elif params.get('pty') == '3':
-                if params.get('d') == '3':
+            elif params.get(TYPE_PORT) == TypePortMegaD.DSEN.value_plc:
+                if params.get(TYPE_DEVICE) == TypeDSensorMegaD.ONEW.value_plc:
                     ports.append(OneWireSensorConfig(**params))
-                elif params.get('d') == '4':
+                elif params.get(TYPE_DEVICE) == TypeDSensorMegaD.iB.value_plc:
                     ports.append(IButtonConfig(**params))
-                elif params.get('d') == '6':
-                    if params.get('m') == '1':
+                elif params.get(TYPE_DEVICE) == TypeDSensorMegaD.W26.value_plc:
+                    if params.get(MODE) == ModeWiegandMegaD.D0.value_plc:
                         ports.append(WiegandD0Config(**params))
                     else:
                         ports.append(WiegandConfig(**params))
-                elif params.get('d') in ('1', '2'):
+                elif params.get(TYPE_DEVICE) in (
+                        TypeDSensorMegaD.DHT11.value_plc,
+                        TypeDSensorMegaD.DHT22.value_plc
+                ):
                     ports.append(DHTSensorConfig(**params))
                 else:
                     ports.append(PortSensorConfig(**params))
-            elif params.get('pty') == '4':
-                if params.get('m') == '1':
+            elif params.get(TYPE_PORT) == TypePortMegaD.I2C.value_plc:
+                if params.get(MODE) == ModeI2CMegaD.SDA.value_plc:
                     ports.append(I2CSDAConfig(**params))
                 else:
                     ports.append(I2CConfig(**params))
-            elif params.get('pty') == '2':
+            elif params.get(TYPE_PORT) == TypePortMegaD.ADC.value_plc:
                 ports.append(AnalogPortConfig(**params))
-            elif params.get('cf') == '11':
+            elif params.get(CONFIG) == PID_CONFIG:
                 pids.append(PIDConfig(**params))
+            elif EXTRA in params:
+                if EXTRA_GROUP in params:
+                    if EXTRA_MIN in params:
+                        extra_ports.append(PCA9685PWMConfig(**params))
+                    else:
+                        extra_ports.append(PCA9685RelayConfig(**params))
+                else:
+                    if EXTRA_ACTION in params:
+                        extra_ports.append(MCP230PortInConfig(**params))
+                    else:
+                        extra_ports.append(MCP230RelayConfig(**params))
 
         return DeviceMegaD(
-            plc=SystemConfigMegaD(**configs), pids=pids, ports=ports
+            plc=SystemConfigMegaD(**configs),
+            pids=pids,
+            ports=ports,
+            extra_ports=extra_ports
         )
