@@ -8,7 +8,8 @@ from .exceptions import (
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
-    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig
+    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, MCP230RelayConfig,
+    MCP230PortInConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -55,7 +56,7 @@ class BinaryPort(BasePort, ABC):
 
     def __repr__(self):
         return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
-                f'type={self.conf.type_port}, state={self._state}), '
+                f'type={self.conf.type_port}, state={self._state}, '
                 f'name={self.conf.name}, count={self._count})>')
 
     @property
@@ -616,3 +617,44 @@ class AnalogSensor(BasePort):
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
 
+
+class I2CExtraMCP230xx(BasePort):
+    """Порт расширения MCP230xx"""
+
+    def __init__(self, conf, megad_id, extra_confs):
+        super().__init__(conf, megad_id)
+        self.conf: MCP230RelayConfig | MCP230PortInConfig = conf
+        self.extra_confs: list = extra_confs
+        self._state: list = []
+
+    def __repr__(self):
+        return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
+                f'type={self.conf.type_port}, state={self._state}, '
+                f'name={self.conf.name})>')
+
+    def update_state(self, data: str | dict):
+        """
+        data: OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF
+        data: 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0
+        data: {'pt': '40', 'ext0': '1', 'mdid': '55555'}
+        data: {'pt': '40', 'ext0': '1', 'ext3': '0', 'mdid': '55555'}
+        """
+        try:
+            if isinstance(data, str):
+                list_data = data.split(';')
+                if len(list_data) < 8:
+                    raise UpdateStateError
+                self._state = [
+                    False if st in ('0', 'OFF') else True for st in list_data
+                ]
+            elif isinstance(data, dict):
+                pass
+        except UpdateStateError:
+            _LOGGER.warning(
+                f'Megad id={self.megad_id}. Получен неизвестный '
+                f'формат данных для порта sensor '
+                f'(id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')

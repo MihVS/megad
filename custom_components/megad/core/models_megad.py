@@ -1,5 +1,4 @@
 from ipaddress import IPv4Address
-from typing import Union
 from urllib.parse import unquote
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -565,6 +564,26 @@ class PCA9685PWMConfig(PCA9685BaseConfig):
     min_value: int | None = Field(alias='emin', default=None, ge=0, le=4095)
     max_value: int | None = Field(alias='emax', default=None, ge=0, le=4095)
     speed: int | None = Field(alias='espd', default=None, ge=0, le=4095)
+
+    @staticmethod
+    def get_value(value):
+        try:
+            value = int(value)
+        except ValueError:
+            return None
+        return value
+
+    @field_validator('min_value', mode='before')
+    def validate_min_value(cls, value):
+        return cls.get_value(value)
+
+    @field_validator('max_value', mode='before')
+    def validate_max_value(cls, value):
+        return cls.get_value(value)
+
+    @field_validator('speed', mode='before')
+    def validate_speed(cls, value):
+        return cls.get_value(value)
 
 
 class DeviceMegaD(BaseModel):
