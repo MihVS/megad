@@ -2,14 +2,15 @@ import logging
 import re
 from abc import ABC, abstractmethod
 
+from .const_parse import EXTRA
 from .exceptions import (
-    UpdateStateError, TypeSensorError, MegaDBusy, PortOFFError
+    UpdateStateError, TypeSensorError, MegaDBusy, PortOFFError, PortNotInit
 )
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
     OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, MCP230RelayConfig,
-    MCP230PortInConfig
+    MCP230PortInConfig, I2CSDAConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -623,7 +624,7 @@ class I2CExtraMCP230xx(BasePort):
 
     def __init__(self, conf, megad_id, extra_confs):
         super().__init__(conf, megad_id)
-        self.conf: MCP230RelayConfig | MCP230PortInConfig = conf
+        self.conf: I2CSDAConfig = conf
         self.extra_confs: list = extra_confs
         self._state: list = []
 
@@ -631,6 +632,24 @@ class I2CExtraMCP230xx(BasePort):
         return (f'<Port(megad_id={self.megad_id}, id={self.conf.id}, '
                 f'type={self.conf.type_port}, state={self._state}, '
                 f'name={self.conf.name})>')
+
+    @staticmethod
+    def get_state(data: dict) -> dict[int: str]:
+        """
+        Получаем из параметров состояние портов.
+
+        :return
+        {1: 0, 4: 1}
+        """
+        states = {}
+        for key, value in data.items():
+            if EXTRA in key:
+                id_port = int(key[3:])
+                states[id_port] = int(value)
+        if states:
+            return states
+        else:
+            raise UpdateStateError
 
     def update_state(self, data: str | dict):
         """
@@ -641,14 +660,28 @@ class I2CExtraMCP230xx(BasePort):
         """
         try:
             if isinstance(data, str):
+                if data.lower() == PLC_BUSY:
+                    raise MegaDBusy
                 list_data = data.split(';')
                 if len(list_data) < 8:
                     raise UpdateStateError
                 self._state = [
-                    False if st in ('0', 'OFF') else True for st in list_data
+                    0 if st in ('0', 'OFF') else 1 for st in list_data
                 ]
             elif isinstance(data, dict):
-                pass
+                if not self._state:
+                    raise PortNotInit
+                states = self.get_state(data)
+                for key, value in states.items():
+                    self._state[key] = value
+        except PortNotInit:
+            _LOGGER.info(
+                        f'Megad id={self.megad_id}. Порт id={self.conf.id} '
+                        f'не инициализирован.')
+        except MegaDBusy:
+            _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
+                         f'обновить данные порта id={self.conf.id}, '
+                         f'Ответ = {data}')
         except UpdateStateError:
             _LOGGER.warning(
                 f'Megad id={self.megad_id}. Получен неизвестный '

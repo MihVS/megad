@@ -14,7 +14,7 @@ from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
     I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D,
-    I2CSensorMBx280
+    I2CSensorMBx280, I2CExtraMCP230xx
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -277,8 +277,19 @@ class MegaD:
         if pid:
             pid.update_state(data)
 
-    def get_port(self, port_id):
+    def get_port_id_interrupt(self, port_id) -> int | None:
+        """Проверяет, является ли порт прерыванием для расширителя портов"""
+        for port in self.ports:
+            if isinstance(port, I2CExtraMCP230xx):
+                if port.conf.interrupt == port_id:
+                    return port.conf.id
+
+    def get_port(self, port_id, ext=False):
         """Получить порт по его id"""
+        if ext:
+            for port in self.ports:
+                if isinstance(port, I2CExtraMCP230xx):
+                    pass
         return next(
             (port for port in self.ports
              if port.conf.id == int(port_id)),

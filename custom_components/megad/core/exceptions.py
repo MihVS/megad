@@ -11,6 +11,11 @@ class MegaDBusy(Exception):
     pass
 
 
+class PortNotInit(Exception):
+    """Порт не инициализирован"""
+    pass
+
+
 class InvalidIpAddress(Exception):
     """Ошибка валидации ip адреса"""
     pass

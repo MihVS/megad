@@ -7,6 +7,7 @@ import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.update_coordinator import (
@@ -61,7 +62,7 @@ async def async_setup_entry(
     file_path = config_entry.data.get('file_path')
     url = config_entry.data.get('url')
     manager_config = MegaDConfigManager(
-        url, file_path, hass.helpers.aiohttp_client.async_get_clientsession()
+        url, file_path, async_get_clientsession(hass)
     )
     await manager_config.read_config_file(file_path)
     megad_config = await manager_config.create_config_megad()
