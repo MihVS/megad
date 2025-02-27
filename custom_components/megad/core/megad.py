@@ -58,6 +58,7 @@ class MegaD:
             I2CSensorMBx280
         ]] = []
         self.url: str = url
+        self.domain: str = url.split('/')[2]
         self.uptime: int = 0
         self.temperature: float = 0
         self.software: str | None = None
