@@ -55,7 +55,7 @@ class MegaD:
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
-            I2CSensorMBx280
+            I2CSensorMBx280, I2CExtraMCP230xx
         ]] = []
         self.url: str = url
         self.domain: str = url.split('/')[2]
@@ -152,8 +152,7 @@ class MegaD:
                     and port.conf.execute_action
             ):
                 return True
-        else:
-            return False
+        return False
 
     async def update_ports(self):
         """Обновление данных настроенных портов"""
@@ -251,10 +250,21 @@ class MegaD:
                         self.ports.append(I2CSensorHTU21D(port, self.id))
                     case DeviceI2CMegaD.BMx280:
                         self.ports.append(I2CSensorMBx280(port, self.id))
+                    case DeviceI2CMegaD.MCP230XX:
+                        self.ports.append(I2CExtraMCP230xx(
+                            port, self.id, self.get_config_extra_ports(port)
+                        ))
             elif port.type_port == TypePortMegaD.ADC:
                 self.ports.append(AnalogSensor(port, self.id))
 
         _LOGGER.debug(f'Инициализированные порты: {self.ports}')
+
+    def get_config_extra_ports(self, port):
+        """Инициализация портов расширителя I2C"""
+        extra_ports = [
+            ext for ext in self.config.extra_ports if ext.base_port == port.id
+        ]
+        return extra_ports.sort(key=lambda x: x['id'])
 
     def init_pids(self, ):
         """Инициализация ПИД регуляторов"""
@@ -278,19 +288,19 @@ class MegaD:
         if pid:
             pid.update_state(data)
 
-    def get_port_id_interrupt(self, port_id) -> int | None:
+    def get_port_interrupt(self, port_id):
         """Проверяет, является ли порт прерыванием для расширителя портов"""
         for port in self.ports:
             if isinstance(port, I2CExtraMCP230xx):
                 if port.conf.interrupt == port_id:
-                    return port.conf.id
+                    return port
 
     def get_port(self, port_id, ext=False):
         """Получить порт по его id"""
         if ext:
-            for port in self.ports:
-                if isinstance(port, I2CExtraMCP230xx):
-                    pass
+            port_ext = self.get_port_interrupt(port_id)
+            if port_ext is not None:
+                return port_ext
         return next(
             (port for port in self.ports
              if port.conf.id == int(port_id)),
