@@ -264,7 +264,8 @@ class MegaD:
         extra_ports = [
             ext for ext in self.config.extra_ports if ext.base_port == port.id
         ]
-        return extra_ports.sort(key=lambda x: x['id'])
+        extra_ports.sort(key=lambda x: x.id)
+        return extra_ports
 
     def init_pids(self, ):
         """Инициализация ПИД регуляторов"""

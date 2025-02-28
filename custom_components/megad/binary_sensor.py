@@ -138,7 +138,8 @@ class BinarySensorExtraMegaD(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        return bool(self._port.state[self._config_extra_port.id])
+        if self._port.state:
+            return bool(self._port.state[self._config_extra_port.id])
 
     @cached_property
     def device_class(self) -> BinarySensorDeviceClass | None:
