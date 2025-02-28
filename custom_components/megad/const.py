@@ -51,6 +51,8 @@ STATUS_THERMO = 'status_thermo'
 PLC_BUSY = 'busy'
 PORT_OFF = 'off'
 NOT_AVAILABLE = 'NA'
+MCP_MODUL = 'MCP'
+PCA_MODUL = 'PCA'
 
 # Номера страниц конфигураций для запроса
 START_CONFIG = 0
@@ -95,6 +97,7 @@ SET_TIME = 'stime'
 ON = 1
 OFF = 0
 PID_OFF = 255
+GET_STATUS = 'get'
 
 # Параметры ответа MegaD
 MEGAD_ID = 'mdid'

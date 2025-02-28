@@ -15,7 +15,7 @@ from .models_megad import (
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
-    PORT, NOT_AVAILABLE, PRESSURE
+    PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -653,6 +653,7 @@ class I2CExtraMCP230xx(BasePort):
 
     def update_state(self, data: str | dict):
         """
+        data: MCP
         data: OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF
         data: 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0
         data: {'pt': '40', 'ext0': '1', 'mdid': '55555'}
@@ -664,6 +665,8 @@ class I2CExtraMCP230xx(BasePort):
             if isinstance(data, str):
                 if data.lower() == PLC_BUSY:
                     raise MegaDBusy
+                if data == MCP_MODUL:
+                    return None
                 list_data = data.split(';')
                 if len(list_data) < 8:
                     raise UpdateStateError

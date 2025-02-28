@@ -31,7 +31,8 @@ from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
     SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
-    PID_SET_POINT, PID_INPUT, PID_OFF, CRON, SET_TIME
+    PID_SET_POINT, PID_INPUT, PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL,
+    GET_STATUS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class MegaD:
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
             I2CSensorMBx280, I2CExtraMCP230xx
         ]] = []
+        self.extra_ports: list[Union[I2CExtraMCP230xx]]
         self.url: str = url
         self.domain: str = url.split('/')[2]
         self.uptime: int = 0
@@ -172,7 +174,13 @@ class MegaD:
                 _LOGGER.debug(f'Состояние терморегулятора порта '
                               f'№{port.conf.id}: статус - {status}, заданная'
                               f'температура - {set_temperature}')
-            if state:
+            if state in (MCP_MODUL, PCA_MODUL):
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
+                state = await self.get_status(
+                    {PORT: port.conf.id, COMMAND: GET_STATUS}
+                )
+                port.update_state(state)
+            elif state:
                 port.update_state(state)
             elif isinstance(port, OneWireBusSensorPort):
                 await asyncio.sleep(TIME_SLEEP_REQUEST)
