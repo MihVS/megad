@@ -668,15 +668,24 @@ class I2CExtraMCP230xx(BasePort):
                 list_data = data.split(';')
                 if len(list_data) < 8:
                     raise UpdateStateError
+                _state = [
+                    False if st in ('0', 'OFF') else True for st in list_data
+                ]
+                for i, st in enumerate(_state):
+                    conf = self.extra_confs[i]
+                    _state[i] = not st if conf.inverse else st
                 self._state = [
-                    0 if st in ('0', 'OFF') else 1 for st in list_data
+                    0 if st else 1 for st in _state
                 ]
             elif isinstance(data, dict):
                 if not self._state:
                     raise PortNotInit
                 states = self.get_state(data)
-                for key, value in states.items():
-                    self._state[key] = value
+                for id_ext, value in states.items():
+                    conf = self.extra_confs[id_ext]
+                    self._state[id_ext] = int(
+                        not value if conf.inverse else value
+                    )
         except PortNotInit:
             _LOGGER.info(f'Megad id={self.megad_id}. Порт id={self.conf.id} '
                          f'не инициализирован.')
