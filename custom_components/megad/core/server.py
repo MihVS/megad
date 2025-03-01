@@ -33,7 +33,7 @@ class MegadHttpView(HomeAssistantView):
         id_megad = params.get(MEGAD_ID)
         state_megad = params.get(MEGAD_STATE)
         ext = any(EXTRA in key for key in params)
-        port_id = params.get(PORT_ID, ext)
+        port_id = params.get(PORT_ID)
         coordinator = None
         for entry_id in entry_ids:
             coordinator_temp = hass.data[DOMAIN][ENTRIES][entry_id]
@@ -50,4 +50,6 @@ class MegadHttpView(HomeAssistantView):
             await coordinator.megad.set_current_time()
 
         if port_id is not None:
-            await coordinator.update_port_state(port_id=port_id, data=params)
+            await coordinator.update_port_state(
+                port_id=port_id, data=params, ext=ext
+            )

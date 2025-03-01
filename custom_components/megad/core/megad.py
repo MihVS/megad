@@ -297,7 +297,7 @@ class MegaD:
         if pid:
             pid.update_state(data)
 
-    def get_port_interrupt(self, port_id):
+    def get_port_interrupt(self, port_id: int):
         """Проверяет, является ли порт прерыванием для расширителя портов"""
         for port in self.ports:
             if isinstance(port, I2CExtraMCP230xx):
@@ -307,7 +307,7 @@ class MegaD:
     def get_port(self, port_id, ext=False):
         """Получить порт по его id"""
         if ext:
-            port_ext = self.get_port_interrupt(port_id)
+            port_ext = self.get_port_interrupt(int(port_id))
             if port_ext is not None:
                 return port_ext
         return next(

@@ -658,8 +658,6 @@ class I2CExtraMCP230xx(BasePort):
         data: 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0
         data: {'pt': '40', 'ext0': '1', 'mdid': '55555'}
         data: {'pt': '40', 'ext0': '1', 'ext3': '0', 'mdid': '55555'}
-         {'pt': '30', 'ext9': '1', 'cnt': '51', 'mdid': '103'}
-         {'pt': '38', 'ext1': '1'}
         """
         try:
             if isinstance(data, str):
@@ -680,9 +678,8 @@ class I2CExtraMCP230xx(BasePort):
                 for key, value in states.items():
                     self._state[key] = value
         except PortNotInit:
-            _LOGGER.info(
-                        f'Megad id={self.megad_id}. Порт id={self.conf.id} '
-                        f'не инициализирован.')
+            _LOGGER.info(f'Megad id={self.megad_id}. Порт id={self.conf.id} '
+                         f'не инициализирован.')
         except MegaDBusy:
             _LOGGER.info(f'Megad id={self.megad_id}. Неуспешная попытка '
                          f'обновить данные порта id={self.conf.id}, '

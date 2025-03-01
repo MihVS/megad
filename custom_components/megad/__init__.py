@@ -150,9 +150,9 @@ class MegaDCoordinator(DataUpdateCoordinator):
         self.megad.update_pid(pid_id, data)
         self.hass.loop.call_soon(self.async_update_listeners)
 
-    async def update_port_state(self, port_id, data):
+    async def update_port_state(self, port_id, data, ext=False):
         """Обновление состояния конкретного порта."""
-        port = self.megad.get_port(port_id)
+        port = self.megad.get_port(port_id, ext=ext)
         if port is None:
             return
         if port.conf.type_port in (TypePortMegaD.ADC, ):
@@ -160,7 +160,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
         if port.conf.mode == ModeInMegaD.C:
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
-            self.megad.update_port(port_id, data)
+            self.megad.update_port(port.conf.id, data)
             self.hass.loop.call_soon(self.async_update_listeners)
 
     def update_set_temperature(self, port_id, temperature):
