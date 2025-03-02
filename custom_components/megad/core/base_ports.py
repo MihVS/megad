@@ -675,7 +675,7 @@ class I2CExtraMCP230xx(BasePort):
                     conf = self.extra_confs[i]
                     _state[i] = not st if conf.inverse else st
                 self._state = [
-                    0 if st else 1 for st in _state
+                    1 if st else 0 for st in _state
                 ]
             elif isinstance(data, dict):
                 if not self._state:

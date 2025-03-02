@@ -152,7 +152,11 @@ class MegaDCoordinator(DataUpdateCoordinator):
 
     async def update_port_state(self, port_id, data, ext=False):
         """Обновление состояния конкретного порта."""
-        port = self.megad.get_port(port_id, ext=ext)
+        if ext:
+            port_ext = self.megad.get_port(port_id, ext=ext)
+            if port_ext.conf.interrupt is not None:
+                self.megad.update_port(port_ext.conf.id, data)
+        port = self.megad.get_port(port_id)
         if port is None:
             return
         if port.conf.type_port in (TypePortMegaD.ADC, ):
