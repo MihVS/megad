@@ -41,7 +41,7 @@ async def async_setup_entry(
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                                  f'ext{config.id}-binary')
                     binary_sensors.append(BinarySensorExtraMegaD(
-                        coordinator, port, config,unique_id
+                        coordinator, port, config, unique_id
                     ))
     for binary_sensor in binary_sensors:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(

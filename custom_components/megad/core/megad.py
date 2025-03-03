@@ -14,7 +14,7 @@ from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
     I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D,
-    I2CSensorMBx280, I2CExtraMCP230xx
+    I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -56,7 +56,7 @@ class MegaD:
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
-            I2CSensorMBx280, I2CExtraMCP230xx
+            I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx]]
         self.url: str = url
@@ -260,6 +260,10 @@ class MegaD:
                         self.ports.append(I2CSensorMBx280(port, self.id))
                     case DeviceI2CMegaD.MCP230XX:
                         self.ports.append(I2CExtraMCP230xx(
+                            port, self.id, self.get_config_extra_ports(port)
+                        ))
+                    case DeviceI2CMegaD.PCA9685:
+                        self.ports.append(I2CExtraPCA9685(
                             port, self.id, self.get_config_extra_ports(port)
                         ))
             elif port.type_port == TypePortMegaD.ADC:

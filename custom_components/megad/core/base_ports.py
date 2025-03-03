@@ -15,7 +15,7 @@ from .models_megad import (
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
-    PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL
+    PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL, PCA_MODUL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -619,12 +619,12 @@ class AnalogSensor(BasePort):
                           f'Исключение: {e}')
 
 
-class I2CExtraMCP230xx(BasePort):
-    """Порт расширения MCP230xx"""
+class I2CExtraBase(BasePort):
+    """Базовый класс для расширителей портов I2C"""
 
     def __init__(self, conf, megad_id, extra_confs):
         super().__init__(conf, megad_id)
-        self.conf: I2CSDAConfig = conf
+        self.conf = conf
         self.extra_confs: list = extra_confs
         self._state: list = []
 
@@ -654,16 +654,17 @@ class I2CExtraMCP230xx(BasePort):
     def update_state(self, data: str | dict):
         """
         data: MCP
+        data: PCA
         data: OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF
         data: 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0
-        data: {'pt': '40', 'ext0': '1', 'mdid': '55555'}
-        data: {'pt': '40', 'ext0': '1', 'ext3': '0', 'mdid': '55555'}
+        data: {'pt': '40', 'ext0': '1'}
+        data: {'pt': '40', 'ext0': '1', 'ext3': '0'}
         """
         try:
             if isinstance(data, str):
                 if data.lower() == PLC_BUSY:
                     raise MegaDBusy
-                if data == MCP_MODUL:
+                if data in (MCP_MODUL, PCA_MODUL):
                     return None
                 list_data = data.split(';')
                 if len(list_data) < 8:
@@ -702,3 +703,13 @@ class I2CExtraMCP230xx(BasePort):
             _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
+
+
+class I2CExtraMCP230xx(I2CExtraBase):
+    """Порт расширения MCP230xx"""
+    pass
+
+
+class I2CExtraPCA9685(I2CExtraBase):
+    """Порт расширения PCA9685"""
+    pass

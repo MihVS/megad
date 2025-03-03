@@ -154,7 +154,9 @@ class MegaDCoordinator(DataUpdateCoordinator):
         """Обновление состояния конкретного порта."""
         if ext:
             port_ext = self.megad.get_port(port_id, ext=ext)
-            if port_ext.conf.interrupt is not None:
+            if port_ext is None:
+                pass
+            elif port_ext.conf.interrupt is not None:
                 self.megad.update_port(port_ext.conf.id, data)
         port = self.megad.get_port(port_id)
         if port is None:
