@@ -224,13 +224,13 @@ class SwitchExtraMegaD(CoordinatorEntity, SwitchEntity):
         if command == PORT_COMMAND.ON:
             return (
                 PORT_COMMAND.OFF
-                if self._port.conf.inverse else
+                if self._config_extra_port.inverse else
                 PORT_COMMAND.ON
             )
         elif command == PORT_COMMAND.OFF:
             return (
                 PORT_COMMAND.ON
-                if self._port.conf.inverse else
+                if self._config_extra_port.inverse else
                 PORT_COMMAND.OFF
             )
         else:

@@ -113,6 +113,8 @@ class MegaDConfigManager:
         """Преобразует поле title в правильную кодировку для Русского языка"""
         if '&emt' in input_string:
             title = 'emt'
+        elif 'ept' in input_string:
+            title = 'ept'
         elif '&pidt' in input_string:
             title = 'pidt'
         else:
