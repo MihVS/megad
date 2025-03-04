@@ -655,10 +655,11 @@ class I2CExtraBase(BasePort):
         """
         data: MCP
         data: PCA
-        data: OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF
+        data: OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;OFF;800
         data: 0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0
         data: {'pt': '40', 'ext0': '1'}
         data: {'pt': '40', 'ext0': '1', 'ext3': '0'}
+        data: {'pt': '38', 'ext15': '1000'}
         """
         try:
             if isinstance(data, str):
@@ -669,15 +670,16 @@ class I2CExtraBase(BasePort):
                 list_data = data.split(';')
                 if len(list_data) < 8:
                     raise UpdateStateError
-                _state = [
-                    False if st in ('0', 'OFF') else True for st in list_data
-                ]
-                for i, st in enumerate(_state):
+                _state = []
+                for i, st in enumerate(list_data):
                     conf = self.extra_confs[i]
-                    _state[i] = not st if conf.inverse else st
-                self._state = [
-                    1 if st else 0 for st in _state
-                ]
+                    if st.isdigit():
+                        _state.append(int(st))
+                    elif st == 'ON':
+                        _state.append(int(False if conf.inverse else True))
+                    else:
+                        _state.append(int(True if conf.inverse else False))
+                self._state = _state
             elif isinstance(data, dict):
                 if not self._state:
                     raise PortNotInit

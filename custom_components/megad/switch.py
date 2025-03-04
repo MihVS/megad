@@ -10,12 +10,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, BasePort, I2CExtraPCA9685
+    ReleyPortOut, PWMPortOut, BasePort, I2CExtraPCA9685, I2CExtraMCP230xx
 )
-from .core.entties import PortOutEntity
+from .core.entties import PortOutEntity, PortOutExtraEntity
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
-from .core.models_megad import PCA9685RelayConfig
+from .core.models_megad import PCA9685RelayConfig, MCP230RelayConfig
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,7 +43,17 @@ async def async_setup_entry(
                 groups.setdefault(port.conf.group, []).append(port.conf.id)
         if isinstance(port, I2CExtraPCA9685):
             for config in port.extra_confs:
-                if isinstance(config, PCA9685RelayConfig):
+                if (isinstance(config, PCA9685RelayConfig) and
+                        config.device_class == DeviceClassControl.SWITCH):
+                    unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'ext{config.id}-switch')
+                    switches.append(SwitchExtraMegaD(
+                        coordinator, port, config, unique_id)
+                    )
+        if isinstance(port, I2CExtraMCP230xx):
+            for config in port.extra_confs:
+                if (isinstance(config, MCP230RelayConfig) and
+                        config.device_class == DeviceClassControl.SWITCH):
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                                  f'ext{config.id}-switch')
                     switches.append(SwitchExtraMegaD(
@@ -160,93 +170,19 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
         await self._switch_group(PORT_COMMAND.TOGGLE)
 
 
-class SwitchExtraMegaD(CoordinatorEntity, SwitchEntity):
+class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
 
     def __init__(
-            self, coordinator: MegaDCoordinator, port: I2CExtraPCA9685,
-            config_extra_port: PCA9685RelayConfig, unique_id: str
+            self, coordinator: MegaDCoordinator,
+            port: I2CExtraPCA9685 | I2CExtraMCP230xx,
+            config_extra_port: PCA9685RelayConfig | MCP230RelayConfig,
+            unique_id: str
     ) -> None:
-        super().__init__(coordinator)
-        self._coordinator: MegaDCoordinator = coordinator
-        self._megad: MegaD = coordinator.megad
-        self._config_extra_port = config_extra_port
-        self._port: I2CExtraPCA9685 = port
-        self.ext_id = f'{self._port.conf.id}e{self._config_extra_port.id}'
-        self._name: str = config_extra_port.name
-        self._unique_id: str = unique_id
-        self._attr_device_info = coordinator.devices_info()
+        super().__init__(coordinator, port, config_extra_port, unique_id)
+        self.entity_id = (f'switch.{self._megad.id}_port{port.conf.id}_'
+                          f'ext{config_extra_port.id}')
 
-    @cached_property
-    def name(self) -> str:
-        return self._name
-
-    @cached_property
-    def unique_id(self) -> str:
-        return self._unique_id
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        if self._port.state:
-            return bool(self._port.state[self._config_extra_port.id])
-
-    async def _switch_port(self, command):
-        """Переключение состояния порта"""
-        try:
-            await self._megad.set_port(
-                self.ext_id, self._check_inverse(command)
-            )
-            if command == PORT_COMMAND.TOGGLE:
-                if self._port.state[self._config_extra_port.id]:
-                    await self._coordinator.update_port_state(
-                        self._port.conf.id,
-                        {f'ext{self._config_extra_port.id}':
-                             self._check_inverse(PORT_COMMAND.OFF)}
-                    )
-                else:
-                    await self._coordinator.update_port_state(
-                        self._port.conf.id,
-                        {f'ext{self._config_extra_port.id}':
-                             self._check_inverse(PORT_COMMAND.ON)}
-                    )
-            else:
-                await self._coordinator.update_port_state(
-                    self._port.conf.id,
-                    {f'ext{self._config_extra_port.id}':
-                         self._check_inverse(command)}
-                )
-        except Exception as e:
-            _LOGGER.warning(f'Ошибка управления портом '
-                            f'{self._port.conf.id}: {e}')
-
-    def _check_inverse(self, command) -> PORT_COMMAND:
-        """Проверяет необходимость инверсии и возвращает правильную команду"""
-        if command == PORT_COMMAND.ON:
-            return (
-                PORT_COMMAND.OFF
-                if self._config_extra_port.inverse else
-                PORT_COMMAND.ON
-            )
-        elif command == PORT_COMMAND.OFF:
-            return (
-                PORT_COMMAND.ON
-                if self._config_extra_port.inverse else
-                PORT_COMMAND.OFF
-            )
-        else:
-            return command
-
-    async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
-        await self._switch_port(PORT_COMMAND.ON)
-
-    async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
-        await self._switch_port(PORT_COMMAND.OFF)
-
-    async def async_toggle(self, **kwargs):
-        """Toggle the entity."""
-        await self._switch_port(PORT_COMMAND.TOGGLE)
-
-
-# Перенести класс сюда из entties.py
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Switch entity {self.entity_id}>"
+        return super().__repr__()

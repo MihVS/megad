@@ -292,8 +292,8 @@ class PortOutConfig(DeviceClassConfig):
         return ModeOutMegaD.get_value(value)
 
 
-class PortOutRelayConfig(PortOutConfig, InverseValueMixin):
-    """Релейный выход"""
+class DeviceClassRelayMixin:
+    """Добавляет класс устройства для релейных выходов"""
 
     device_class: DeviceClassControl = DeviceClassControl.SWITCH
 
@@ -310,15 +310,15 @@ class PortOutRelayConfig(PortOutConfig, InverseValueMixin):
                 return DeviceClassControl.SWITCH
 
 
-class PortOutPWMConfig(PortOutConfig):
-    """ШИМ выход"""
+class PortOutRelayConfig(
+    DeviceClassRelayMixin, PortOutConfig, InverseValueMixin):
+    """Релейный выход"""
+
+
+class DeviceClassPWMMixin:
+    """Добавляет класс устройства для релейных выходов"""
 
     device_class: DeviceClassControl = DeviceClassControl.LIGHT
-    smooth: bool = Field(alias='misc', default=False)
-    smooth_long: int = Field(alias='m2', default=0, ge=0, le=255)
-    default_value: int = Field(alias='d', default=0, ge=0, le=255)
-    min_value: int = Field(alias='pwmm', default=0, ge=0, le=255)
-    inverse: bool = False
 
     @field_validator('device_class', mode='before')
     def set_device_class(cls, value):
@@ -329,6 +329,27 @@ class PortOutPWMConfig(PortOutConfig):
                 return DeviceClassControl.FAN
             case _:
                 return DeviceClassControl.LIGHT
+
+
+class PortOutPWMConfig(DeviceClassPWMMixin, PortOutConfig):
+    """ШИМ выход"""
+
+    # device_class: DeviceClassControl = DeviceClassControl.LIGHT
+    smooth: bool = Field(alias='misc', default=False)
+    smooth_long: int = Field(alias='m2', default=0, ge=0, le=255)
+    default_value: int = Field(alias='d', default=0, ge=0, le=255)
+    min_value: int = Field(alias='pwmm', default=0, ge=0, le=255)
+    inverse: bool = False
+
+    # @field_validator('device_class', mode='before')
+    # def set_device_class(cls, value):
+    #     match value:
+    #         case DeviceClassControl.LIGHT.value:
+    #             return DeviceClassControl.LIGHT
+    #         case DeviceClassControl.FAN.value:
+    #             return DeviceClassControl.FAN
+    #         case _:
+    #             return DeviceClassControl.LIGHT
 
     @field_validator('smooth', mode='before')
     def parse_default_on(cls, value):
@@ -524,7 +545,7 @@ class ExtraActionPortMixin:
                 return False
 
 
-class MCP230RelayConfig(ExtraInverseValueMixin):
+class MCP230RelayConfig(DeviceClassRelayMixin, ExtraInverseValueMixin):
     """Релейный выход модуля расширения MCP230."""
 
 
@@ -554,15 +575,15 @@ class PCA9685BaseConfig(ExtraInverseValueMixin):
         return value
 
 
-class PCA9685RelayConfig(PCA9685BaseConfig):
+class PCA9685RelayConfig(DeviceClassRelayMixin, PCA9685BaseConfig):
     """Релейный выход модуля расширения PCA9685."""
 
 
-class PCA9685PWMConfig(PCA9685BaseConfig):
+class PCA9685PWMConfig(DeviceClassPWMMixin, PCA9685BaseConfig):
     """ШИМ выход модуля расширения PCA9685."""
 
-    min_value: int | None = Field(alias='emin', default=None, ge=0, le=4095)
-    max_value: int | None = Field(alias='emax', default=None, ge=0, le=4095)
+    min_value: int = Field(alias='emin', default=1, ge=0, le=4095)
+    max_value: int = Field(alias='emax', default=4095, ge=0, le=4095)
     speed: int | None = Field(alias='espd', default=None, ge=0, le=4095)
 
     @staticmethod
@@ -575,11 +596,19 @@ class PCA9685PWMConfig(PCA9685BaseConfig):
 
     @field_validator('min_value', mode='before')
     def validate_min_value(cls, value):
-        return cls.get_value(value)
+        value = cls.get_value(value)
+        if value is None:
+            return 1
+        else:
+            return value
 
     @field_validator('max_value', mode='before')
     def validate_max_value(cls, value):
-        return cls.get_value(value)
+        value = cls.get_value(value)
+        if value is None:
+            return 4095
+        else:
+            return value
 
     @field_validator('speed', mode='before')
     def validate_speed(cls, value):
