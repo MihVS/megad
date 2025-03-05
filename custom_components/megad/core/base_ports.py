@@ -9,8 +9,7 @@ from .exceptions import (
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
-    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, MCP230RelayConfig,
-    MCP230PortInConfig, I2CSDAConfig
+    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
