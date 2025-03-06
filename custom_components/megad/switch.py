@@ -10,12 +10,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, BasePort, I2CExtraPCA9685, I2CExtraMCP230xx
+    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx
 )
 from .core.entties import PortOutEntity, PortOutExtraEntity
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
-from .core.models_megad import PCA9685RelayConfig, MCP230RelayConfig
+from .core.models_megad import (
+    PCA9685RelayConfig, MCP230RelayConfig, PCA9685PWMConfig
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +51,10 @@ async def async_setup_entry(
                                  f'ext{config.id}-switch')
                     switches.append(SwitchExtraMegaD(
                         coordinator, port, config, unique_id)
+                    )
+                if config.group is not None:
+                    groups.setdefault(config.group, []).append(
+                        f'{port.conf.id}e{config.id}'
                     )
         if isinstance(port, I2CExtraMCP230xx):
             for config in port.extra_confs:
@@ -118,10 +124,15 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
         return self._unique_id
 
     @staticmethod
-    def _check_command(port: BasePort, command: PORT_COMMAND) -> str:
+    def _check_command(port, command: PORT_COMMAND, ext_id=None) -> str:
         """
         Проверка порта на возможность диммирования и корректировка команды.
         """
+        if ext_id is not None:
+            conf_ext = port.extra_confs[ext_id]
+            if isinstance(conf_ext, PCA9685PWMConfig):
+                max_value = conf_ext.max_value
+                return max_value if command == PORT_COMMAND.ON else command
         if isinstance(port, PWMPortOut):
             return '255' if command == PORT_COMMAND.ON else command
         else:
@@ -134,24 +145,57 @@ class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
             await self._megad.set_port(f'g{self._group}', command)
             if command == PORT_COMMAND.TOGGLE:
                 for port_id in self._ports:
+                    ext_id = None
+                    if isinstance(port_id, str):
+                        port_id, ext_id = port_id.split('e')
+                        port_id = int(port_id)
+                        ext_id = int(ext_id)
                     port = self._megad.get_port(port_id)
-                    if port.state:
-                        port_states[port_id] = (
-                            PORT_COMMAND.ON
-                            if port.conf.inverse else
-                            PORT_COMMAND.OFF
-                        )
+                    if ext_id is not None:
+                        if port.state[ext_id]:
+                            port_states.setdefault(port_id, {})[
+                                f'ext{ext_id}'] = (
+                                PORT_COMMAND.ON
+                                if port.conf.inverse else
+                                PORT_COMMAND.OFF
+                            )
+                        else:
+                            port_states.setdefault(port_id, {})[
+                                f'ext{ext_id}'] = (
+                                PORT_COMMAND.OFF
+                                if port.conf.inverse else
+                                self._check_command(
+                                    port, PORT_COMMAND.ON, ext_id
+                                )
+                            )
                     else:
-                        port_states[port_id] = (
-                            PORT_COMMAND.OFF
-                            if port.conf.inverse else
-                            self._check_command(port, PORT_COMMAND.ON)
-                        )
+                        if port.state:
+                            port_states[port_id] = (
+                                PORT_COMMAND.ON
+                                if port.conf.inverse else
+                                PORT_COMMAND.OFF
+                            )
+                        else:
+                            port_states[port_id] = (
+                                PORT_COMMAND.OFF
+                                if port.conf.inverse else
+                                self._check_command(port, PORT_COMMAND.ON)
+                            )
             else:
                 for port_id in self._ports:
-                    port_states[port_id] = self._check_command(
-                        self._megad.get_port(port_id), command
-                    )
+                    if isinstance(port_id, str):
+                        port_id, ext_id = port_id.split('e')
+                        port_id = int(port_id)
+                        ext_id = int(ext_id)
+                        port = self._megad.get_port(port_id)
+                        port_states.setdefault(port_id, {})[
+                            f'ext{ext_id}'] = self._check_command(
+                            port, command, ext_id
+                        )
+                    else:
+                        port_states[port_id] = self._check_command(
+                            self._megad.get_port(port_id), command
+                        )
             self._coordinator.update_group_state(port_states)
         except Exception as e:
             _LOGGER.warning(f'Ошибка управления группой портов '

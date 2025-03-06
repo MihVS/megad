@@ -585,6 +585,7 @@ class PCA9685PWMConfig(DeviceClassPWMMixin, PCA9685BaseConfig):
     min_value: int = Field(alias='emin', default=1, ge=0, le=4095)
     max_value: int = Field(alias='emax', default=4095, ge=0, le=4095)
     speed: int | None = Field(alias='espd', default=None, ge=0, le=4095)
+    inverse: bool = False
 
     @staticmethod
     def get_value(value):
