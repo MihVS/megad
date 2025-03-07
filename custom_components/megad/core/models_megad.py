@@ -217,6 +217,8 @@ class ActionPortMixin:
 
     @field_validator('execute_net_action', mode='before')
     def convert_execute_net_action(cls, value):
+        if value == '':
+            return TypeNetActionMegaD.D
         return TypeNetActionMegaD.get_value(value)
 
 
