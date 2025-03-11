@@ -86,6 +86,13 @@ async def get_slug_server(page_cf: str) -> str:
     return teg.get('value')
 
 
+async def get_megad_id_server(page_cf: str) -> str:
+    """Получает Megad-ID в интерфейсе конфигурации megad"""
+    soup = BeautifulSoup(page_cf, 'lxml')
+    mdid_input = soup.find('input', {'name': 'mdid'})
+    return mdid_input.get('value')
+
+
 def get_params_pid(page: str) -> dict:
     """Получает параметры настройки ПИД регулятора из страницы"""
     params = dict(parse_qsl(
