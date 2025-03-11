@@ -46,6 +46,11 @@ class InvalidSlug(Exception):
     pass
 
 
+class InvalidMegaDID(Exception):
+    """Отсутствует MegaD ID в настройках контроллера."""
+    pass
+
+
 class InvalidPasswordMegad(HomeAssistantError):
     """Неверный пароль для контроллера"""
     pass
