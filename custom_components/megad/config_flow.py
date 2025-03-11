@@ -53,7 +53,7 @@ async def validate_url(hass: HomeAssistant, user_input: str) -> str:
 
     for url in urls:
         try:
-            async with session.get(url, timeout=3) as response:
+            async with session.get(url, timeout=1) as response:
                 if response.status == 200:
                     _LOGGER.debug(f'Преобразованный URL: {url}')
                     return url
