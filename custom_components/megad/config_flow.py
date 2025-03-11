@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 from datetime import datetime
 from http import HTTPStatus
 from urllib.parse import urlparse
@@ -10,9 +11,11 @@ import voluptuous as vol
 from pydantic import ValidationError
 
 from homeassistant import config_entries
+from homeassistant.components.network import async_get_source_ip
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import selector
 from .const import (
     DOMAIN, PATH_CONFIG_MEGAD, DEFAULT_IP, DEFAULT_PASSWORD, ENTRIES
 )
@@ -20,10 +23,15 @@ from .core.config_manager import MegaDConfigManager
 from .core.config_parser import (
     async_get_page_config, get_slug_server
 )
-from .core.exceptions import (WriteConfigError,
-                              InvalidPassword, InvalidAuthorized, InvalidSlug,
-                              InvalidIpAddressExist, NotAvailableURL)
-from .core.utils import get_list_config_megad
+from .core.const_fw import DEFAULT_IP_LIST
+from .core.exceptions import (
+    WriteConfigError, InvalidPassword, InvalidAuthorized, InvalidSlug,
+    InvalidIpAddressExist, NotAvailableURL, SearchMegaDError, InvalidIpAddress,
+    InvalidPasswordMegad, ChangeIPMegaDError
+)
+from .core.utils import (
+    get_list_config_megad, get_broadcast_ip, get_megad_ip, change_ip
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,9 +71,19 @@ def check_exist_ip(ip: str, hass_data: dict) -> None:
             raise InvalidIpAddressExist
 
 
+def validate_ip_address(ip: str) -> None:
+    """Валидация ip адреса"""
+    regex = re.compile(
+        r'^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.)'
+        r'{3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$'
+    )
+    if not re.fullmatch(regex, ip):
+        raise InvalidIpAddress
+
+
 def validate_long_password(password: str) -> None:
     """Валидация длины пароля"""
-    if len(password) > 3:
+    if len(password) > 5:
         raise InvalidPassword
 
 
@@ -310,9 +328,126 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
         return OptionsFlowHandler()
 
     async def async_step_user(self, user_input=None):
+        """Стартовое меню"""
+        errors: dict[str, str] = {}
+        language = self.hass.config.language
+        options_ru = {
+            'add_device': 'Добавить новое устройство',
+            'change_ip': 'Найти устройство и изменить IP-адрес'
+        }
+        options_en = {
+            'Добавить новое устройство': 'add_device',
+            'Найти устройство и изменить IP-адрес': 'change_ip'
+        }
+        if language == 'ru':
+            options = [name for name in options_ru.values()]
+        else:
+            options = [name for name in options_ru]
+        if user_input is not None:
+            if language == 'ru':
+                value_ru = user_input.get('selection')
+                user_input.update({'selection': options_en[value_ru]})
+            _LOGGER.debug(f'step_user {user_input}')
+            try:
+                if user_input.get('selection') == 'add_device':
+                    return await self.async_step_start()
+                if user_input.get('selection') == 'change_ip':
+                    return await self.async_step_change_ip_device()
+            except Exception as e:
+                _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+                errors["base"] = "unknown"
+
+        return self.async_show_form(
+            step_id='user',
+            data_schema=vol.Schema({
+                vol.Required('selection'): selector({
+                    'select': {
+                        'options': options,
+                        'mode': 'list'
+                    }
+                })
+            }),
+            errors=errors
+        )
+
+    async def scan_device(self) -> list[str]:
+        """Возвращает список адресов устройств."""
+        ip_addr = await async_get_source_ip(self.hass)
+        _LOGGER.debug(f'ip address of host: {ip_addr}')
+        broadcast_ip = get_broadcast_ip(ip_addr)
+        _LOGGER.debug(f'broadcast ip address: {broadcast_ip}')
+        return await asyncio.to_thread(get_megad_ip, ip_addr, broadcast_ip)
+
+    async def change_ip_device(self, old_ip, new_ip, password):
+        """Изменяет ip устройства."""
+        ip_addr = await async_get_source_ip(self.hass)
+        broadcast_ip = get_broadcast_ip(ip_addr)
+        await asyncio.to_thread(
+            change_ip, old_ip, new_ip, password, broadcast_ip
+        )
+
+    async def async_step_change_ip_device(self, user_input=None):
+        """Меню изменения ip адреса устройства"""
+        _LOGGER.debug(f'step_change_ip_device: {user_input}')
+        errors: dict[str, str] = {}
+        ip_devices = self.data.get('ip_devices', DEFAULT_IP_LIST)
+        try:
+            if user_input is not None:
+                _LOGGER.debug(f'step_change_ip_device: {user_input}')
+                if user_input.get('return_main_menu', False):
+                    return await self.async_step_user()
+
+                old_ip = user_input.get('old_ip')
+                new_ip = user_input.get('new_ip')
+                password = user_input.get('password')
+                validate_ip_address(old_ip)
+                validate_ip_address(new_ip)
+                validate_long_password(password)
+                _LOGGER.info(f'Пробую изменить IP-адрес {old_ip} на {new_ip}')
+                await self.change_ip_device(old_ip, new_ip, password)
+                return await self.async_step_user()
+            else:
+                ip_devices = await self.scan_device()
+                self.data['ip_devices'] = ip_devices
+        except SearchMegaDError:
+            errors['base'] = 'search_error'
+        except ChangeIPMegaDError:
+            _LOGGER.warning(f'Ошибка изменения адреса {old_ip} на {new_ip}')
+            errors['base'] = 'invalid_change_ip'
+        except InvalidPasswordMegad:
+            _LOGGER.warning('Неверный пароль для MegaD!')
+            errors['base'] = 'unauthorized'
+        except InvalidPassword:
+            _LOGGER.warning(f'Пароль длиннее 5 символов: {password}')
+            errors['base'] = 'invalid_password'
+        except InvalidIpAddress:
+            _LOGGER.warning(f'Проверьте ip адрес: {old_ip}, {new_ip}')
+            errors['base'] = 'invalid_ip'
+        except Exception as e:
+            _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
+            errors['base'] = 'unknown'
+
+        return self.async_show_form(
+            step_id='change_ip_device',
+            data_schema=vol.Schema(
+            {
+                vol.Required('old_ip'): vol.In(ip_devices),
+                vol.Required(schema="password", default=self.data.get(
+                    'password', DEFAULT_PASSWORD
+                )): str,
+                vol.Required(schema='new_ip', default=DEFAULT_IP): str,
+                vol.Optional(schema="return_main_menu"): bool
+            }
+            ),
+            errors=errors
+        )
+
+    async def async_step_start(self, user_input=None):
         errors: dict[str, str] = {}
         if user_input is not None:
             _LOGGER.debug(f'step_user: {user_input}')
+            if user_input.get('change_ip_device', False):
+                return await self.async_step_change_ip_device()
             ip = user_input['ip']
             password = user_input['password']
             try:
@@ -335,7 +470,7 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.error(f'Адрес не доступен: {ip}')
                 errors['base'] = 'not_available_url'
             except InvalidPassword:
-                _LOGGER.error(f'Пароль длиннее 3х символов: {password}')
+                _LOGGER.error(f'Пароль длиннее 5 символов: {password}')
                 errors['base'] = 'invalid_password'
             except InvalidAuthorized:
                 _LOGGER.error(f'Вы ввели неверный пароль: {password}')
@@ -350,7 +485,7 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         return self.async_show_form(
-            step_id='user',
+            step_id='start',
             data_schema=self.data_schema_main(),
             errors=errors
         )

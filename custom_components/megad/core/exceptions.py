@@ -58,10 +58,12 @@ class NotAvailableURL(Exception):
 
 class TemperatureOutOfRangeError(HomeAssistantError):
     """Задана температура не в пределах допустимого диапазона."""
+    pass
 
 
 class InvalidSettingPort(HomeAssistantError):
     """Неправильно настроен порт."""
+    pass
 
 
 class TypeSensorError(Exception):
@@ -76,3 +78,14 @@ class PortOFFError(Exception):
 
 class SetFactorPIDError(HomeAssistantError):
     """Не удалось изменить коэффициент ПИД регулятора."""
+    pass
+
+
+class SearchMegaDError(Exception):
+    """Ошибка поиска устройства."""
+    pass
+
+
+class ChangeIPMegaDError(Exception):
+    """Ошибка изменения адреса устройства."""
+    pass
