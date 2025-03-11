@@ -214,7 +214,6 @@ class MegaDConfigManager:
 
     async def set_config(self, line_config: str):
         """Отправка настроек контроллера в виде строки по URL."""
-        _LOGGER.warning(line_config)
         try:
             _LOGGER.debug(f'Попытка записи конфигурации на контроллер. '
                           f'URL: {self.url}, params: {line_config}')
