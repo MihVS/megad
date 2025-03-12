@@ -20,6 +20,7 @@ from .models_megad import (
     AnalogPortConfig, SystemConfigMegaD, PIDConfig, PCA9685PWMConfig,
     PCA9685RelayConfig, MCP230PortInConfig, MCP230RelayConfig
 )
+from ..const import MEGAD_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -238,6 +239,16 @@ class MegaDConfigManager:
         async with aiofiles.open(path, "r", encoding="cp1251") as file:
             self.settings = await file.readlines()
             _LOGGER.debug(f'Прочитана конфигурация MegaD из файла: {path}')
+
+    def get_mega_id(self) -> str:
+        """Получить ID контроллера из конфигурации."""
+        for setting in self.settings:
+            params = dict(
+                parse_qsl(setting, keep_blank_values=True, encoding='cp1251')
+            )
+            if params.get(CONFIG) == ID_CONFIG:
+                return params.get(MEGAD_ID)
+        return ''
 
     async def create_config_megad(self) -> DeviceMegaD:
         """Создаёт конфигурацию контроллера."""

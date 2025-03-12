@@ -2,6 +2,7 @@
   "title": "MegaD",
   "config": {
     "error": {
+      "field_server_empty": "The server address is not specified in the MegaD settings.",
       "not_available_url": "The address is not available.",
       "ip_exist": "The IP address is already in use in the integration.",
       "invalid_password": "Password must be more than 5 characters.",

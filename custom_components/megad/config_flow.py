@@ -21,22 +21,17 @@ from .const import (
 )
 from .core.config_manager import MegaDConfigManager
 from .core.config_parser import (
-    async_get_page_config, get_slug_server, get_megad_id_server
+    async_get_page_config, get_slug_server
 )
 from .core.const_fw import DEFAULT_IP_LIST
 from .core.exceptions import (
     WriteConfigError, InvalidPassword, InvalidAuthorized, InvalidSlug,
     InvalidIpAddressExist, NotAvailableURL, SearchMegaDError, InvalidIpAddress,
-    InvalidPasswordMegad, ChangeIPMegaDError
+    InvalidPasswordMegad, ChangeIPMegaDError, InvalidMegaDID
 )
 from .core.utils import (
     get_list_config_megad, get_broadcast_ip, get_megad_ip, change_ip
 )
-from .core.exceptions import (
-    WriteConfigError, InvalidPassword, InvalidAuthorized, InvalidSlug,
-    InvalidIpAddressExist, NotAvailableURL, InvalidMegaDID
-)
-from .core.utils import get_list_config_megad
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,10 +103,8 @@ async def validate_slug(url: str, session: aiohttp.ClientSession) -> None:
         raise InvalidSlug
 
 
-async def validate_megad_id(url: str, session: aiohttp.ClientSession) -> None:
+async def validate_megad_id(megad_id) -> None:
     """Валидация поля id контроллера. Должно быть непустым."""
-    page = await async_get_page_config(2, url, session)
-    megad_id = await get_megad_id_server(page)
     if megad_id == '':
         raise InvalidMegaDID
 
@@ -206,7 +199,6 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 url = self.data.get('url')
                 session = async_get_clientsession(self.hass)
                 await validate_slug(url, session)
-                await validate_megad_id(url, session)
                 name_file = user_input.get('config_list')
                 file_path = self.get_path_to_config(name_file)
                 self.data['file_path'] = file_path
@@ -215,6 +207,7 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 _LOGGER.debug(f'name_file: {name_file}')
                 manager_config = MegaDConfigManager(url, file_path, session)
                 await manager_config.read_config_file(file_path)
+                await validate_megad_id(manager_config.get_mega_id())
                 megad_config = await manager_config.create_config_megad()
                 json_data = megad_config.model_dump_json(indent=2)
                 _LOGGER.debug(f'megad_config_json: \n{json_data}')
@@ -240,8 +233,18 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                               f'Script. Оно должно быть = megad.')
                 errors["base"] = "validate_slug"
             except ValidationError as e:
-                _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
-                errors["base"] = "validate_config"
+                field_server = False
+                for error in e.errors():
+                    if error['loc'][0] == 'srvt':
+                        field_server = True
+                if field_server:
+                    _LOGGER.error(f'Проверьте в настройках контроллера '
+                                  f'поле SRV. Адрес сервера должен быть '
+                                  f'указан.')
+                    errors["base"] = "field_server_empty"
+                else:
+                    _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
+                    errors["base"] = "validate_config"
             except Exception as e:
                 _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
                 errors["base"] = "unknown"

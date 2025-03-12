@@ -21,9 +21,7 @@ class SystemConfigMegaD(BaseModel):
     password: str = Field(alias='pwd', max_length=3)
     gateway: IPv4Address = Field(alias='gw')
     ip_server: str = Field(alias='sip')
-    server_type: ServerTypeMegaD = Field(
-        alias='srvt', default=ServerTypeMegaD.HTTP
-    )
+    server_type: ServerTypeMegaD = Field(alias='srvt')
     slug: str = Field(alias='sct')
     uart: ConfigUARTMegaD = Field(alias='gsm')
 
