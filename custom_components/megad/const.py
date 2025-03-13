@@ -22,6 +22,7 @@ COUNT_UPDATE = 20
 COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = 'custom_components/config_megad/'
+RELEASE_URL = 'https://ab-log.ru/smart-house/ethernet/megad-2561-firmware'
 
 # Значения по умолчанию
 DEFAULT_IP = '192.168.0.14'
@@ -144,7 +145,8 @@ PLATFORMS = [
     'light',
     'fan',
     'climate',
-    'number'
+    'number',
+    'update'
 ]
 
 

@@ -64,6 +64,7 @@ class MegaD:
         self.uptime: int = 0
         self.temperature: float = 0
         self.software: str | None = None
+        self.software_latest: str = '0.00b0'
         self.request_count: int = COUNT_UPDATE
         self.init_ports()
         self.init_pids()
