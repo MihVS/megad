@@ -100,4 +100,4 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         """Install an update."""
         _LOGGER.info(f'имитация обновления прошивки!!!!!{version}')
         time.sleep(5)
-        self._current_version = self.latest_version
+        self._current_version = self._latest_version
