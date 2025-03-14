@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .config_manager import MegaDConfigManager
-from ..const import NAME_SCRIPT_MEGAD, CONFIG, PORT
+from ..const import NAME_SCRIPT_MEGAD, CONFIG, PORT, BASE_URL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -108,3 +108,71 @@ def get_params_pid(page: str) -> dict:
             value = text.split('Val:')[-1].strip()
     params.update({'value': value})
     return params
+
+
+def _check_name_version(full_version: str) -> str:
+    """Возвращает правильный формат названия версии прошивки."""
+    if 'beta' in full_version:
+        version, beta = full_version.split('beta')
+        return f'{version.strip()}b{beta.strip()}'
+    else:
+        return full_version
+
+
+def create_description(versions: list[dict]) -> str:
+    """Создаёт описание на основе описаний пропущенных версий."""
+    description = []
+    for version in versions:
+        description.append(f'{version["title"]}\n{version["descr"]}\n')
+    return '\n'.join(description)
+
+
+def create_short_description(descr: str) -> str:
+    """Создаёт краткое описание которое меньше 255 символов."""
+    if len(descr) < 254:
+        return descr
+    else:
+        return f'{descr[:251]}...'
+
+
+def get_latest_version(page: str, current_version: str) -> dict:
+    """Получает последнею версию ПО контроллера и описание."""
+    passed_versions = []
+    all_versions = []
+
+    soup = BeautifulSoup(page, 'lxml')
+    div_tag = soup.find('div', class_='cnt')
+    li_tags = div_tag.find_all('li')
+    for li_tag in li_tags:
+        version = {}
+        title = li_tag.font.text
+        full_version = title.split('ver')[-1].strip()
+        version['name'] = _check_name_version(full_version)
+        version['title'] = title
+        descr_list = []
+        descrs = li_tag.find('br').next_siblings
+        for el in descrs:
+            if el.name == 'a':
+                break
+            descr_list.append(el.text)
+        version['descr'] = ''.join(descr_list)
+        version['link'] = f'{BASE_URL}{li_tag.find('a', href=True)['href']}'
+        all_versions.append(version)
+
+    sorted_versions = sorted(
+        all_versions, key=lambda v: v['name'], reverse=True
+    )
+    if current_version is None:
+        _LOGGER.debug('Текущая версия ПО контроллера не инициирована.')
+        full_descr = ''
+    else:
+        for version in sorted_versions:
+            if version['name'] > current_version:
+                passed_versions.append(version)
+        full_descr = create_description(passed_versions)
+    return {
+        'name': sorted_versions[0]['name'],
+        'descr': full_descr if full_descr else sorted_versions[0]['descr'],
+        'short_descr': create_short_description(sorted_versions[0]['descr']),
+        'link': sorted_versions[0]['link']
+    }

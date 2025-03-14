@@ -19,20 +19,20 @@ from .base_ports import (
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
     get_version_software, async_get_page_port, get_set_temp_thermostat,
-    get_status_thermostat, async_get_page, get_params_pid
+    get_status_thermostat, async_get_page, get_params_pid, get_latest_version
 )
 from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
     ModeI2CMegaD, ModeSensorMegaD
 )
 from .exceptions import MegaDBusy, InvalidPasswordMegad
-from .models_megad import DeviceMegaD, PIDConfig
+from .models_megad import DeviceMegaD, PIDConfig, LatestVersionMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
     SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
     PID_SET_POINT, PID_INPUT, PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL,
-    GET_STATUS
+    GET_STATUS, RELEASE_URL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ class MegaD:
         self.uptime: int = 0
         self.temperature: float = 0
         self.software: str | None = None
-        self.software_latest: str = '0.00b0'
+        self.lt_version_sw: LatestVersionMegaD = LatestVersionMegaD()
         self.request_count: int = COUNT_UPDATE
         self.init_ports()
         self.init_pids()
@@ -73,6 +73,26 @@ class MegaD:
     def __repr__(self):
         return (f"<MegaD(id={self.config.plc.megad_id}, "
                 f"ip={self.config.plc.ip_megad}, ports={self.ports})>")
+
+    async def update_latest_software(self):
+        """Обновляет последнею доступную версию ПО контроллера"""
+        try:
+            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+                _LOGGER.debug(f'Проверка последней версии прошивки контроллера'
+                              f' {self.config.plc.ip_megad}')
+                response = await self.session.get(url=RELEASE_URL)
+                if response.status == HTTPStatus.OK:
+                    page = await response.text()
+                    lt_vers = get_latest_version(page, self.software)
+                    self.lt_version_sw = LatestVersionMegaD(**lt_vers)
+                    _LOGGER.debug(f'Последняя доступная версия прошивки: '
+                                  f'{self.lt_version_sw.name}')
+                else:
+                    raise Exception(f'Статус запроса: {response.status}')
+        except Exception as e:
+            _LOGGER.warning(f'Неудачная попытка проверки последней доступной '
+                            f'версии прошивки контроллера id: {self.id}.'
+                            f'Ошибка: {e}')
 
     async def request_to_megad(self, params) -> ClientResponse:
         """Отправка запроса к контроллеру"""
@@ -102,15 +122,17 @@ class MegaD:
         """Обновление всех данных контроллера."""
         await self.update_current_time()
         await self.update_ports()
+        await asyncio.sleep(TIME_SLEEP_REQUEST)
+        page_cf0 = await async_get_page_config(
+            START_CONFIG, self.url, self.session
+        )
+        _LOGGER.debug(f'Версия ПО контроллера id: {self.id}: {self.software}')
+        self.software = get_version_software(page_cf0)
+
         if self.request_count == COUNT_UPDATE:
             self.request_count = 0
-            await asyncio.sleep(TIME_SLEEP_REQUEST)
-            page_cf0 = await async_get_page_config(
-                START_CONFIG, self.url, self.session
-            )
-            self.software = get_version_software(page_cf0)
-            _LOGGER.debug(f'Версия ПО контроллера id:'
-                          f'{self.id}: {self.software}')
+            await self.update_latest_software()
+
         await asyncio.sleep(TIME_SLEEP_REQUEST)
         page_cf1 = await async_get_page_config(
             MAIN_CONFIG, self.url, self.session

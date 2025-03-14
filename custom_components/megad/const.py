@@ -18,11 +18,12 @@ TIME_UPDATE = 60
 TIME_OUT_UPDATE_DATA = 5
 TIME_SLEEP_REQUEST = 0.2
 
-COUNT_UPDATE = 20
+COUNT_UPDATE = 1
 COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = 'custom_components/config_megad/'
 RELEASE_URL = 'https://ab-log.ru/smart-house/ethernet/megad-2561-firmware'
+BASE_URL = 'https://ab-log.ru/'
 
 # Значения по умолчанию
 DEFAULT_IP = '192.168.0.14'

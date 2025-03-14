@@ -623,3 +623,11 @@ class DeviceMegaD(BaseModel):
     pids: list[PIDConfig]
     ports: list
     extra_ports: list
+
+
+class LatestVersionMegaD(BaseModel):
+    """Класс актуальной версии ПО контроллера."""
+    name: str | None = None
+    descr: str | None = None
+    short_descr: str | None = None
+    link: str | None = None
