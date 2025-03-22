@@ -1,9 +1,13 @@
+import asyncio
 import logging
+import socket
 import time
+import requests
 from typing import Any
 
 from propcache import cached_property
 
+from homeassistant.components.network import async_get_source_ip
 from homeassistant.components.update import (
     UpdateEntity, UpdateDeviceClass, UpdateEntityFeature
 )
@@ -15,7 +19,10 @@ from . import MegaDCoordinator
 from .const import (
     RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
 )
+from .core.const_fw import RECV_TIMEOUT
+from .core.exceptions import CreateSocketReceiveError, CreateSocketSendError
 from .core.megad import MegaD
+from .core.utils import create_receive_socket, create_send_socket
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,6 +105,30 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             self, version: str | None, backup: bool = False, **kwargs: Any
     ) -> None:
         """Install an update."""
-        _LOGGER.info(f'имитация обновления прошивки!!!!!{version}')
-        time.sleep(5)
-        self._current_version = self._latest_version
+        self._attr_in_progress = True
+        self._attr_update_percentage = 0
+        megad_ip = self._megad.config.plc.ip_megad
+        host_ip = asyncio.run_coroutine_threadsafe(
+            async_get_source_ip(self.hass), self.hass.loop).result()
+        _LOGGER.debug(f'Адрес хоста: {host_ip}, адрес MegaD: {megad_ip}')
+        try:
+            receive_socket = create_receive_socket(host_ip)
+            receive_socket.settimeout(RECV_TIMEOUT)
+            send_socket = create_send_socket()
+
+            receive_socket.close()
+            send_socket.close()
+            self._attr_update_percentage = 100
+            time.sleep(1)
+        except (CreateSocketReceiveError, CreateSocketSendError):
+            _LOGGER.error(f'Ошибка обновления ПО контроллера. Не удалось '
+                          f'установить соединение с {megad_ip}')
+        except Exception as e:
+            _LOGGER.error(f'Ошибка обновления ПО контроллера. error: {e}')
+            receive_socket.close()
+            send_socket.close()
+        finally:
+            self._attr_in_progress = False
+        # _LOGGER.info(f'имитация обновления прошивки!!!!!{version}')
+        # time.sleep(5)
+        # self._current_version = self._latest_version

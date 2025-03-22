@@ -11,7 +11,7 @@ from .const_fw import (
 )
 from .exceptions import (
     SearchMegaDError, InvalidIpAddress, InvalidPasswordMegad,
-    ChangeIPMegaDError
+    ChangeIPMegaDError, CreateSocketReceiveError, CreateSocketSendError
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,11 +49,9 @@ def get_megad_ip(local_ip, broadcast_ip) -> list:
     """Получаем список адресов доступных устройств в сети."""
     ip_megads = []
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock = create_send_socket()
 
-    recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    recv_sock.bind((local_ip, RECV_PORT))
+    recv_sock = create_receive_socket(local_ip)
     recv_sock.settimeout(SEARCH_TIMEOUT)
     _LOGGER.info(f'Поиск устройств MegaD в сети...')
     try:
@@ -72,7 +70,8 @@ def get_megad_ip(local_ip, broadcast_ip) -> list:
                 if pkt and pkt[0] == 0xAA:
                     if len(pkt) == 5:
                         ip_address = f'{pkt[1]}.{pkt[2]}.{pkt[3]}.{pkt[4]}'
-                        _LOGGER.info(f'Найдено устройство с адресом: {ip_address}')
+                        _LOGGER.info(f'Найдено устройство с адресом: '
+                                     f'{ip_address}')
                         ip_megads.append(ip_address)
                     elif len(pkt) >= 7:
                         if pkt[2] == 12:
@@ -162,3 +161,28 @@ def change_ip(old_ip, new_ip, password, broadcast_ip):
         raise ChangeIPMegaDError
 
     sock.close()
+
+
+def create_receive_socket(host_ip) -> socket.socket:
+    """Создаёт сокет для приёма данных от контроллера."""
+    try:
+        receive_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        receive_socket.bind( (host_ip, RECV_PORT))
+
+        _LOGGER.debug('Сокет для приема данных создан и привязан.')
+        return receive_socket
+    except Exception as e:
+        _LOGGER.warning(f'Ошибка при создании сокета для приема данных: {e}')
+        raise CreateSocketReceiveError
+
+
+def create_send_socket() -> socket.socket:
+    """Создаёт сокет для отправки данных на контроллер."""
+    try:
+        send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        _LOGGER.debug('Сокет для отправки данных создан.')
+        return send_socket
+    except Exception as e:
+        _LOGGER.warning(f'Ошибка при создании сокета для отправки данных: {e}')
+        raise CreateSocketSendError
