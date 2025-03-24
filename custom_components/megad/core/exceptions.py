@@ -95,10 +95,17 @@ class ChangeIPMegaDError(Exception):
     """Ошибка изменения адреса устройства."""
     pass
 
+
 class CreateSocketReceiveError(Exception):
     """Ошибка создания сокета для чтения данных от контроллера."""
     pass
 
+
 class CreateSocketSendError(Exception):
     """Ошибка создания сокета для отправки данных на контроллер."""
+    pass
+
+
+class FWUpdateError(HomeAssistantError):
+    """Ошибка обновления ПО контроллера."""
     pass
