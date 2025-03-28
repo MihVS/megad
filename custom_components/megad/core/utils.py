@@ -12,7 +12,7 @@ import requests
 from .const_fw import (
     BROADCAST_PORT, RECV_PORT, BROADCAST_STRING, SEARCH_TIMEOUT,
     DEFAULT_IP_LIST, FW_PATH, BROADCAST_REBOOT, CHECK_DATA, BROADCAST_CLEAR,
-    BLOCK_SIZE, BROADCAST_EEPROM, BROADCAST_EEPROM_CONFIRM
+    BLOCK_SIZE, BROADCAST_EEPROM, BROADCAST_EEPROM_CONFIRM, BROADCAST_CHANGE_IP
 )
 from .exceptions import (
     SearchMegaDError, InvalidIpAddress, InvalidPasswordMegad,
@@ -105,7 +105,7 @@ def get_megad_ip(local_ip, broadcast_ip) -> list:
         return ip_megads if ip_megads else DEFAULT_IP_LIST
 
 
-def change_ip(old_ip, new_ip, password, broadcast_ip):
+def change_ip(old_ip, new_ip, password, broadcast_ip, host_ip):
     try:
         old_device_ip = list(map(int, old_ip.split(".")))
         new_device_ip = list(map(int, new_ip.split(".")))
@@ -124,9 +124,9 @@ def change_ip(old_ip, new_ip, password, broadcast_ip):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    sock.bind(('0.0.0.0', RECV_PORT))
+    sock.bind((host_ip, RECV_PORT))
 
-    broadcast_string_old = b"\xAA\x00\x04" + broadcast_string
+    broadcast_string_old = BROADCAST_CHANGE_IP + broadcast_string
     sock.sendto(broadcast_string_old, (broadcast_ip, BROADCAST_PORT))
     time.sleep(0.1)
 
@@ -145,7 +145,7 @@ def change_ip(old_ip, new_ip, password, broadcast_ip):
         _LOGGER.info(f'Нет ответа от первого запроса к контроллеру. '
                      f'Возможно адрес был изменён.')
 
-    broadcast_string_new = b"\xAA\x00\x04\xDA\xCA" + broadcast_string
+    broadcast_string_new = BROADCAST_CHANGE_IP + CHECK_DATA + broadcast_string
     sock.sendto(broadcast_string_new, (broadcast_ip, BROADCAST_PORT))
     time.sleep(0.1)
 

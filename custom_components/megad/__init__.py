@@ -66,7 +66,9 @@ async def async_setup_entry(
     )
     await manager_config.read_config_file(file_path)
     megad_config = await manager_config.create_config_megad()
-    megad = MegaD(hass=hass, config=megad_config, url=url)
+    megad = MegaD(
+        hass=hass, config=megad_config, url=url, config_path=file_path
+    )
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})

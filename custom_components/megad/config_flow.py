@@ -404,7 +404,7 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
         ip_addr = await async_get_source_ip(self.hass)
         broadcast_ip = get_broadcast_ip(ip_addr)
         await asyncio.to_thread(
-            change_ip, old_ip, new_ip, password, broadcast_ip
+            change_ip, old_ip, new_ip, password, broadcast_ip, ip_addr
         )
 
     async def async_step_change_ip_device(self, user_input=None):

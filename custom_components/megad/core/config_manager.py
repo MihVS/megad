@@ -20,7 +20,7 @@ from .models_megad import (
     AnalogPortConfig, SystemConfigMegaD, PIDConfig, PCA9685PWMConfig,
     PCA9685RelayConfig, MCP230PortInConfig, MCP230RelayConfig
 )
-from ..const import MEGAD_ID
+from ..const import MEGAD_ID, RESTART, ON
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -224,7 +224,7 @@ class MegaDConfigManager:
         except Exception as e:
             raise WriteConfigError(e)
 
-    async def upload_config(self):
+    async def upload_config(self, timeout=0):
         """Загрузка конфигурации на контроллер"""
         for config in self.settings:
             config = config.strip()
@@ -233,9 +233,14 @@ class MegaDConfigManager:
             await self.set_config(config)
             if 'nr=1' not in config:
                 await asyncio.sleep(1)
+            await asyncio.sleep(timeout)
+        await asyncio.sleep(1)
+        await self.request_to_megad({RESTART: ON})
 
-    async def read_config_file(self, path: str):
+    async def read_config_file(self, path: str = ''):
         """Читает конфигурацию из файла и обновляет её у объекта"""
+        if not path:
+            path = self.config_file_path
         async with aiofiles.open(path, "r", encoding="cp1251") as file:
             self.settings = await file.readlines()
             _LOGGER.debug(f'Прочитана конфигурация MegaD из файла: {path}')

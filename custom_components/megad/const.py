@@ -94,6 +94,7 @@ PID_P_FACTOR = 'pidpf'
 PID_I_FACTOR = 'pidif'
 PID_D_FACTOR = 'piddf'
 SET_TIME = 'stime'
+RESTART = 'restart'
 
 # Значения запроса
 ON = 1

@@ -45,7 +45,8 @@ class MegaD:
             self,
             hass: HomeAssistant,
             config: DeviceMegaD,
-            url: str
+            url: str,
+            config_path: str,
     ):
         self.hass = hass
         self.session = async_get_clientsession(hass)
@@ -60,6 +61,7 @@ class MegaD:
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx]]
         self.url: str = url
+        self.config_path: str = config_path
         self.domain: str = url.split('/')[2]
         self.uptime: int = 0
         self.temperature: float = 0

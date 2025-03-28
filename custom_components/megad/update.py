@@ -13,12 +13,14 @@ from homeassistant.components.update import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
-    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
+    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP, TIME_UPDATE
 )
+from .core.config_manager import MegaDConfigManager
 from .core.const_fw import (
     RECV_TIMEOUT, BROADCAST_START, CHECK_DATA, BROADCAST_PORT
 )
@@ -28,7 +30,8 @@ from .core.exceptions import (
 from .core.megad import MegaD
 from .core.utils import (
     create_receive_socket, create_send_socket, turn_on_fw_update, download_fw,
-    check_bootloader_version, get_broadcast_ip, reboot_megad, write_firmware
+    check_bootloader_version, get_broadcast_ip, reboot_megad, write_firmware,
+    change_ip
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +45,7 @@ async def async_setup_entry(
     entry_id = config_entry.entry_id
     coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
-    firmware_update_entity = MegaDFirmwareUpdate(coordinator)
+    firmware_update_entity = MegaDFirmwareUpdate(coordinator, entry_id)
     hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
         firmware_update_entity.unique_id
     )
@@ -62,9 +65,10 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
     _attr_supported_features = (UpdateEntityFeature.INSTALL
                                 | UpdateEntityFeature.RELEASE_NOTES)
 
-    def __init__(self, coordinator: MegaDCoordinator):
+    def __init__(self, coordinator: MegaDCoordinator, entry_id):
         super().__init__(coordinator)
         self._megad: MegaD = coordinator.megad
+        self._entry_id = entry_id
         self._lt_version_sw = self._megad.lt_version_sw
         self._attr_unique_id = f'{self._megad.id}-megad_firmware_update'
         self._attr_name = 'Обновление прошивки контроллера'
@@ -109,6 +113,7 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         """URL to the full release notes of the latest version available."""
         return self._attr_release_url
 
+    @property
     def update_percentage(self) -> int | float | None:
         """Update installation progress."""
         return self.progress['percentage']
@@ -117,6 +122,7 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             self, version: str | None, backup: bool = False, **kwargs: Any
     ) -> None:
         """Install an update."""
+        self.coordinator.update_interval = None
         receive_socket = None
         send_socket = None
         self._attr_in_progress = True
@@ -220,10 +226,27 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
 
             reboot_megad(send_socket, receive_socket, broadcast_ip)
 
-            # Поменять IP адрес
-            # Залить обратно конфигурацию
-            # Обязательно снова перезагрузить устройство
-            # Подумать как обновить версию ПО в НА
+            receive_socket.close()
+            receive_socket = None
+            send_socket.close()
+            send_socket = None
+            self.progress['percentage'] = 83
+            time.sleep(1)
+
+            change_ip(DEFAULT_IP, megad_ip, password, broadcast_ip, host_ip)
+            self.progress['percentage'] = 84
+
+            self.progress['percentage'] = 85
+            time.sleep(2) # тут если не ставить паузу то во время загрузки конфига прилетает что контроллер загружен
+            asyncio.run_coroutine_threadsafe(
+                self._write_config(), self.hass.loop
+            )
+            self.progress['percentage'] = 99
+            time.sleep(1)
+
+            # Надо понять как запустить асинхронную функцию в синхронной и поправить тут
+            # Надо подумать над остановкой интеграции во время обновления контроллера. Возможно ввести какой-то флаг для этого
+            # Подумать над процентовкой процесса обновления, пока она не отображается по неизвестной причине
 
             self.progress['percentage'] = 100
             self._current_version = self._latest_version
@@ -240,9 +263,28 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
                                 'воспользуйтесь режимом восстановления '
                                 'https://ab-log.ru/smart-house/ethernet/megad-upgrade.')
         finally:
+            self.coordinator.update_interval = TIME_UPDATE
             self._attr_in_progress = False
             if receive_socket:
                 receive_socket.close()
             if send_socket:
                 send_socket.close()
             _LOGGER.debug('Процесс прошивки завершён.')
+            asyncio.run_coroutine_threadsafe(
+                self.hass.config_entries.async_reload(self._entry_id),
+                self.hass.loop
+            )
+
+
+    async def _write_config(self) -> None:
+        """Записать конфиг на контроллер."""
+        manager_config = MegaDConfigManager(
+            self._megad.url,
+            self._megad.config_path,
+            async_get_clientsession(self.hass)
+        )
+        await manager_config.read_config_file()
+        _LOGGER.debug(f'Прочитан файл конфигурации. Всего строк: '
+                      f'{len(manager_config.settings)}')
+        await manager_config.upload_config(timeout=0.2)
+        _LOGGER.debug(f'Конфигурация загружена в контроллер.')
