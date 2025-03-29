@@ -317,7 +317,7 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                     async_get_clientsession(self.hass)
                 )
                 await config_manager.read_config_file(config_path)
-                await config_manager.upload_config()
+                await config_manager.upload_config(timeout=0.2)
                 return await self.async_step_get_config()
             except WriteConfigError as e:
                 _LOGGER.error(f'Ошибка записи конфигурации в контроллер: {e}')

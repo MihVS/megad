@@ -21,7 +21,7 @@ from .const import (
 from .core.base_ports import OneWireSensorPort
 from .core.config_manager import MegaDConfigManager
 from .core.enums import ModeInMegaD, TypePortMegaD
-from .core.exceptions import InvalidSettingPort
+from .core.exceptions import InvalidSettingPort, FirmwareUpdateInProgress
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD, PIDConfig
 from .core.server import MegadHttpView
@@ -94,6 +94,22 @@ async def update_listener(hass, entry):
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    _LOGGER.info(f'Выгрузка интеграции: {entry.entry_id}')
+    _LOGGER.info(f'data: {entry.data}')
+    try:
+        unload_ok = await hass.config_entries.async_unload_platforms(
+            entry, PLATFORMS
+        )
+        hass.data[DOMAIN][ENTRIES].pop(entry.entry_id)
+
+        return unload_ok
+    except Exception as e:
+        _LOGGER.error(f'Ошибка при выгрузке: {e}')
+        return False
+
+
 class MegaDCoordinator(DataUpdateCoordinator):
     """Координатор для общего обновления данных"""
 
@@ -122,9 +138,14 @@ class MegaDCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Обновление всех данных megad"""
         try:
+            if self.megad.is_flashing:
+                raise FirmwareUpdateInProgress
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
                 await self.megad.update_data()
                 return self.megad
+        except FirmwareUpdateInProgress as err:
+            _LOGGER.warning(f'Обновление данных недоступно, контроллер '
+                            f'id-{self.megad.id} обновляется.')
         except Exception as err:
             if self._count_connect < COUNTER_CONNECT:
                 self._count_connect += 1
@@ -138,6 +159,12 @@ class MegaDCoordinator(DataUpdateCoordinator):
             else:
                 raise UpdateFailed(f"Ошибка соединения с контроллером id: "
                                    f"{self.megad.config.plc.megad_id}: {err}")
+
+    async def set_flashing_state(self, state):
+        """Устанавливает режим прошивки устройства"""
+        self.megad.is_flashing = state
+        self.hass.loop.call_soon(self.async_update_listeners)
+        self.last_update_success = not state
 
     async def _turn_off_state(self, state_off, delay, port_id, data):
         """Возвращает выключенное состояние порта"""
@@ -207,19 +234,3 @@ class MegaDCoordinator(DataUpdateCoordinator):
         await asyncio.sleep(1)
         await self.megad.update_data()
         self.hass.loop.call_soon(self.async_update_listeners)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a config entry."""
-    _LOGGER.info(f'Выгрузка интеграции: {entry.entry_id}')
-    _LOGGER.info(f'data: {entry.data}')
-    try:
-        unload_ok = await hass.config_entries.async_unload_platforms(
-            entry, PLATFORMS
-        )
-        hass.data[DOMAIN][ENTRIES].pop(entry.entry_id)
-
-        return unload_ok
-    except Exception as e:
-        _LOGGER.error(f'Ошибка при выгрузке: {e}')
-        return False

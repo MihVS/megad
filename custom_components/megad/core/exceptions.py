@@ -109,3 +109,8 @@ class CreateSocketSendError(Exception):
 class FWUpdateError(HomeAssistantError):
     """Ошибка обновления ПО контроллера."""
     pass
+
+
+class FirmwareUpdateInProgress(Exception):
+    """Идёт процесс обновление ПО контроллера."""
+    pass

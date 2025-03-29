@@ -25,7 +25,9 @@ from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
     ModeI2CMegaD, ModeSensorMegaD
 )
-from .exceptions import MegaDBusy, InvalidPasswordMegad
+from .exceptions import (
+    MegaDBusy, InvalidPasswordMegad, FirmwareUpdateInProgress
+)
 from .models_megad import DeviceMegaD, PIDConfig, LatestVersionMegaD
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
@@ -68,6 +70,7 @@ class MegaD:
         self.software: str | None = None
         self.lt_version_sw: LatestVersionMegaD = LatestVersionMegaD()
         self.request_count: int = COUNT_UPDATE
+        self.is_flashing = False
         self.init_ports()
         self.init_pids()
         _LOGGER.debug(f'Создан объект MegaD: {self}')
@@ -98,6 +101,11 @@ class MegaD:
 
     async def request_to_megad(self, params) -> ClientResponse:
         """Отправка запроса к контроллеру"""
+        if self.is_flashing:
+            _LOGGER.warning(f'Управление контроллером MegaD-{self.id}'
+                            f'{self.config.plc.ip_megad}  невозможно! '
+                            f'Идет процесс прошивки!')
+            raise FirmwareUpdateInProgress
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
             response = await self.session.get(url=self.url, params=params)
             _LOGGER.debug(f'Отправлен запрос контроллеру '
@@ -122,6 +130,10 @@ class MegaD:
 
     async def update_data(self):
         """Обновление всех данных контроллера."""
+        if self.is_flashing:
+            _LOGGER.debug(f'Контроллер {self.config.plc.ip_megad} в процессе '
+                          f'обновления ПО. Обновление данных невозможно.')
+            return
         await self.update_current_time()
         await self.update_ports()
         await asyncio.sleep(TIME_SLEEP_REQUEST)
