@@ -1,5 +1,13 @@
 ## MegaD для Home Assistant
-*Неофициальная версия интеграции.*
+*Неофициальная версия интеграции.*  
+
+<details>
+<summary>Группа обсуждения в телеграм</summary>
+
+![telegram](./data/img/mihvs_integrations.png)
+
+</details>  
+
 
 ![python version](https://img.shields.io/badge/Python-3.13-yellowgreen?style=plastic&logo=python)
 ![pydantic version](https://img.shields.io/badge/pydantic-ha-yellowgreen?style=plastic&logo=fastapi)
