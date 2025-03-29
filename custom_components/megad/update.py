@@ -2,7 +2,6 @@ import asyncio
 import logging
 import socket
 import time
-import requests
 from typing import Any
 
 from propcache import cached_property
@@ -18,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
-    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP, TIME_UPDATE
+    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP
 )
 from .core.config_manager import MegaDConfigManager
 from .core.const_fw import (
@@ -114,14 +113,12 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         return self._attr_release_url
 
     @property
-    def update_percentage(self) -> int | float | None:
-        """Update installation progress."""
-        return self._attr_update_percentage
-
-    def _update_percentage(self, percentage: int) -> None:
-        """Обновление процента выполнения обновления в асинхронном коде."""
-        self._attr_update_percentage = percentage
-        self.hass.add_job(self.async_write_ha_state)
+    def available(self) -> bool:
+        """Доступность процесса обновления."""
+        if self._megad.is_flashing:
+            return True
+        else:
+            return self._coordinator.last_update_success
 
     async def _write_config(self) -> None:
         """Записать конфиг на контроллер."""
@@ -148,7 +145,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         receive_socket = None
         send_socket = None
         self._attr_in_progress = True
-        self._update_percentage(0)
         megad_ip = str(self._megad.config.plc.ip_megad)
         password = self._megad.config.plc.password
         host_ip = asyncio.run_coroutine_threadsafe(
@@ -157,7 +153,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         try:
             file_path = download_fw(self._megad.lt_version_sw.link)
             check_bootloader_version(megad_ip, password)
-            self._update_percentage(5)
             broadcast_ip = get_broadcast_ip(host_ip)
             broadcast_string = BROADCAST_START + CHECK_DATA
 
@@ -191,7 +186,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             try:
                 pkt, peer = receive_socket.recvfrom(200)
                 _LOGGER.debug(f'Финальный ответ получен от {peer}: {pkt}')
-                self._update_percentage(10)
             except socket.timeout:
                 _LOGGER.warning('Таймаут при ожидании финального ответа.')
                 raise Exception('Контроллер не отвечает.')
@@ -228,7 +222,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
                 raise Exception('Слишком маленький файл прошивки.')
             else:
                 _LOGGER.debug('Файл прошивки прошёл проверку...')
-                self._update_percentage(15)
 
             write_firmware(
                 send_socket,
@@ -236,7 +229,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
                 broadcast_ip,
                 firmware,
             )
-            self._update_percentage(50)
             reboot_megad(send_socket, receive_socket, broadcast_ip)
 
             receive_socket.close()
@@ -247,15 +239,11 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
 
             change_ip(DEFAULT_IP, megad_ip, password, broadcast_ip, host_ip)
 
-            self._update_percentage(60)
             asyncio.run_coroutine_threadsafe(
                 self._write_config(), self.hass.loop
             ).result()
-            self._update_percentage(99)
             time.sleep(1)
 
-
-            self._update_percentage(100)
             self._current_version = self._latest_version
             time.sleep(1)
         except (CreateSocketReceiveError, CreateSocketSendError):
@@ -263,10 +251,8 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
                           f'установить соединение с {megad_ip}')
         except Exception as e:
             _LOGGER.error(f'Ошибка обновления ПО контроллера. error: {e}')
-            _LOGGER.debug(f'Прогресс прошивки остановлен на '
-                          f'{self._attr_update_percentage}%')
             raise FWUpdateError('Произошла ошибка обновления ПО контроллера. '
-                                'Если контроллер не запускается, то '
+                                'Если контроллер не загружается, то '
                                 'воспользуйтесь режимом восстановления '
                                 'https://ab-log.ru/smart-house/ethernet/megad-upgrade.')
         finally:

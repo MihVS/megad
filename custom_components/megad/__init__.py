@@ -143,9 +143,11 @@ class MegaDCoordinator(DataUpdateCoordinator):
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
                 await self.megad.update_data()
                 return self.megad
-        except FirmwareUpdateInProgress as err:
+        except FirmwareUpdateInProgress:
             _LOGGER.warning(f'Обновление данных недоступно, контроллер '
                             f'id-{self.megad.id} обновляется.')
+            raise UpdateFailed(f'Идёт процесс обновления ПО MegaD id: '
+                               f'{self.megad.config.plc.megad_id}')
         except Exception as err:
             if self._count_connect < COUNTER_CONNECT:
                 self._count_connect += 1
@@ -157,8 +159,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
                 )
                 return self.megad
             else:
-                raise UpdateFailed(f"Ошибка соединения с контроллером id: "
-                                   f"{self.megad.config.plc.megad_id}: {err}")
+                raise UpdateFailed(f'Ошибка соединения с контроллером id: '
+                                   f'{self.megad.config.plc.megad_id}: {err}')
 
     async def set_flashing_state(self, state):
         """Устанавливает режим прошивки устройства"""

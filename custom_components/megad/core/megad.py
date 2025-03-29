@@ -140,8 +140,8 @@ class MegaD:
         page_cf0 = await async_get_page_config(
             START_CONFIG, self.url, self.session
         )
-        _LOGGER.debug(f'Версия ПО контроллера id: {self.id}: {self.software}')
         self.software = get_version_software(page_cf0)
+        _LOGGER.debug(f'Версия ПО контроллера id: {self.id}: {self.software}')
 
         if self.request_count == COUNT_UPDATE:
             self.request_count = 0
@@ -159,6 +159,7 @@ class MegaD:
         if self.pids:
             await self.update_pids()
         self.request_count += 1
+        _LOGGER.debug(f'request_count: {self.request_count}')
 
     async def update_current_time(self):
         """Синхронизирует время контроллера с сервером раз в сутки"""
