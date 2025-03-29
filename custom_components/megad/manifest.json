@@ -3,7 +3,7 @@
   "name": "MegaD-2561",
   "codeowners": ["@mihvs"],
   "config_flow": true,
-  "dependencies": ["http", "zeroconf"],
+  "dependencies": ["http", "zeroconf", "network"],
   "documentation": "https://github.com/mihvs/megad",
   "integration_type": "hub",
   "iot_class": "local_push",
@@ -13,5 +13,5 @@
     "lxml",
     "aiofiles"
   ],
-  "version": "v2025.4.0-beta3"
+  "version": "v2025.4.0-beta4"
 }
