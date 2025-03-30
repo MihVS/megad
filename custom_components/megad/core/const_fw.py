@@ -13,4 +13,4 @@ BLOCK_SIZE = 256
 SEARCH_TIMEOUT = 5
 RECV_TIMEOUT = 0.3
 DEFAULT_IP_LIST = ['null']
-FW_PATH = 'config/custom_components/megad/fw_megad'
+FW_PATH = 'custom_components/megad/fw_megad'

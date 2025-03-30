@@ -316,6 +316,7 @@ def write_firmware(
     except socket.timeout:
         _LOGGER.error('Таймаут в ожидании подтверждения стирания прошивки.')
         raise Exception('Не удалось стереть прошивку')
+    _LOGGER.debug(f'Новая прошивка успешно записана на устройство.')
 
     _LOGGER.debug('Отправка команды на стирание EEPROM')
     broadcast_string = BROADCAST_EEPROM + CHECK_DATA

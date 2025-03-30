@@ -232,7 +232,7 @@ class MegaDConfigManager:
                 continue
             await self.set_config(config)
             if 'nr=1' not in config:
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
             await asyncio.sleep(timeout)
         await asyncio.sleep(1)
         await self.request_to_megad({RESTART: ON})

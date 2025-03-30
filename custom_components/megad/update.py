@@ -137,6 +137,7 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             self, version: str | None, backup: bool = False, **kwargs: Any
     ) -> None:
         """Install an update."""
+        _LOGGER.info(f'Запущен процесс обновления ПО MegaD-{self._megad.id}')
         asyncio.run_coroutine_threadsafe(
             self._coordinator.set_flashing_state(True),
             self.hass.loop
@@ -230,6 +231,7 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
                 firmware,
             )
             reboot_megad(send_socket, receive_socket, broadcast_ip)
+            time.sleep(3)
 
             receive_socket.close()
             receive_socket = None
@@ -254,7 +256,8 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             raise FWUpdateError('Произошла ошибка обновления ПО контроллера. '
                                 'Если контроллер не загружается, то '
                                 'воспользуйтесь режимом восстановления '
-                                'https://ab-log.ru/smart-house/ethernet/megad-upgrade.')
+                                'https://ab-log.ru/smart-house/ethernet/'
+                                'megad-upgrade.')
         finally:
             self._attr_in_progress = False
             if receive_socket:
