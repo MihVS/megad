@@ -29,12 +29,12 @@ from .exceptions import (
     MegaDBusy, InvalidPasswordMegad, FirmwareUpdateInProgress
 )
 from .models_megad import DeviceMegaD, PIDConfig, LatestVersionMegaD
+from .request_to_ablogru import FirmwareChecker
 from ..const import (
     MAIN_CONFIG, START_CONFIG, TIME_OUT_UPDATE_DATA, PORT, COMMAND, ALL_STATES,
-    LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, COUNT_UPDATE,
-    SET_TEMPERATURE, STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E,
-    PID_SET_POINT, PID_INPUT, PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL,
-    GET_STATUS, RELEASE_URL
+    LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, SET_TEMPERATURE,
+    STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E, PID_SET_POINT, PID_INPUT,
+    PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL, GET_STATUS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,8 +49,10 @@ class MegaD:
             config: DeviceMegaD,
             url: str,
             config_path: str,
+            fw_checker: FirmwareChecker,
     ):
         self.hass = hass
+        self.fw_checker: FirmwareChecker = fw_checker
         self.session = async_get_clientsession(hass)
         self.config: DeviceMegaD = config
         self.id = config.plc.megad_id
@@ -69,7 +71,6 @@ class MegaD:
         self.temperature: float = 0
         self.software: str | None = None
         self.lt_version_sw: LatestVersionMegaD = LatestVersionMegaD()
-        self.request_count: int = COUNT_UPDATE
         self.is_flashing = False
         self.init_ports()
         self.init_pids()
@@ -81,23 +82,17 @@ class MegaD:
 
     async def update_latest_software(self):
         """Обновляет последнею доступную версию ПО контроллера"""
-        try:
-            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
-                _LOGGER.debug(f'Проверка последней версии прошивки контроллера'
-                              f' {self.config.plc.ip_megad}')
-                response = await self.session.get(url=RELEASE_URL)
-                if response.status == HTTPStatus.OK:
-                    page = await response.text()
-                    lt_vers = get_latest_version(page, self.software)
-                    self.lt_version_sw = LatestVersionMegaD(**lt_vers)
-                    _LOGGER.debug(f'Последняя доступная версия прошивки: '
-                                  f'{self.lt_version_sw.name}')
-                else:
-                    raise Exception(f'Статус запроса: {response.status}')
-        except Exception as e:
-            _LOGGER.warning(f'Неудачная попытка проверки последней доступной '
-                            f'версии прошивки контроллера id: {self.id}.'
-                            f'Ошибка: {e}')
+        page = self.fw_checker.page_firmware
+        if page:
+            lt_vers = get_latest_version(page, self.software)
+            self.lt_version_sw = LatestVersionMegaD(**lt_vers)
+            _LOGGER.debug(f'Последняя доступная версия прошивки для '
+                          f'MegaD-{self.id}: {self.lt_version_sw.name}.')
+            _LOGGER.debug(f'Время обновление данных о доступных прошивках: '
+                          f'{self.fw_checker._last_check}')
+        else:
+            _LOGGER.debug('Нет данных о последней доступной версии прошивки на'
+                          ' сайте ab-log.ru')
 
     async def request_to_megad(self, params) -> ClientResponse:
         """Отправка запроса к контроллеру"""
@@ -143,9 +138,8 @@ class MegaD:
         self.software = get_version_software(page_cf0)
         _LOGGER.debug(f'Версия ПО контроллера id: {self.id}: {self.software}')
 
-        if self.request_count == COUNT_UPDATE:
-            self.request_count = 0
-            await self.update_latest_software()
+        await self.fw_checker.update_page_firmwares()
+        await self.update_latest_software()
 
         await asyncio.sleep(TIME_SLEEP_REQUEST)
         page_cf1 = await async_get_page_config(
@@ -158,8 +152,6 @@ class MegaD:
                       f'id:{self.id}: {self.temperature}')
         if self.pids:
             await self.update_pids()
-        self.request_count += 1
-        _LOGGER.debug(f'request_count: {self.request_count}')
 
     async def update_current_time(self):
         """Синхронизирует время контроллера с сервером раз в сутки"""

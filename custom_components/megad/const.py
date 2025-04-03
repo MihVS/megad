@@ -12,13 +12,13 @@ DOMAIN = 'megad'
 MANUFACTURER = 'ab-log'
 ENTRIES = 'entries'
 CURRENT_ENTITY_IDS = 'current_entity_ids'
+FIRMWARE_CHECKER = 'firmware_checker'
 
 # Таймауты
 TIME_UPDATE = 60
 TIME_OUT_UPDATE_DATA = 5
 TIME_SLEEP_REQUEST = 0.2
 
-COUNT_UPDATE = 360
 COUNTER_CONNECT = 0
 
 PATH_CONFIG_MEGAD = 'custom_components/config_megad/'

@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import (
 from .const import (
     TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
     PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS, STATUS_THERMO, TIME_SLEEP_REQUEST,
-    OFF
+    OFF, FIRMWARE_CHECKER
 )
 from .core.base_ports import OneWireSensorPort
 from .core.config_manager import MegaDConfigManager
@@ -24,6 +24,7 @@ from .core.enums import ModeInMegaD, TypePortMegaD
 from .core.exceptions import InvalidSettingPort, FirmwareUpdateInProgress
 from .core.megad import MegaD
 from .core.models_megad import DeviceMegaD, PIDConfig
+from .core.request_to_ablogru import FirmwareChecker
 from .core.server import MegadHttpView
 from .core.utils import get_action_turnoff
 
@@ -66,13 +67,26 @@ async def async_setup_entry(
     )
     await manager_config.read_config_file(file_path)
     megad_config = await manager_config.create_config_megad()
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN].setdefault(FIRMWARE_CHECKER, {})
+    hass.data[DOMAIN].setdefault(ENTRIES, {})
+    hass.data[DOMAIN][ENTRIES][entry_id] = None
+    if not hass.data[DOMAIN][FIRMWARE_CHECKER]:
+        fw_checker = FirmwareChecker(hass)
+        await fw_checker.update_page_firmwares()
+        hass.data[DOMAIN][FIRMWARE_CHECKER] = fw_checker
+        _LOGGER.debug(f'Добавлен firmware checker: '
+                      f'{hass.data[DOMAIN][FIRMWARE_CHECKER]}')
     megad = MegaD(
-        hass=hass, config=megad_config, url=url, config_path=file_path
+        hass=hass,
+        config=megad_config,
+        url=url,
+        config_path=file_path,
+        fw_checker=hass.data[DOMAIN][FIRMWARE_CHECKER]
     )
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(ENTRIES, {})
+
     hass.data[DOMAIN].setdefault(CURRENT_ENTITY_IDS, {})
     hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id] = []
     hass.data[DOMAIN][ENTRIES][entry_id] = coordinator
