@@ -44,6 +44,7 @@ async def async_setup_entry(
             if port.conf.group is not None:
                 groups.setdefault(port.conf.group, []).append(port.conf.id)
         if isinstance(port, I2CExtraPCA9685):
+
             for config in port.extra_confs:
                 if (isinstance(config, PCA9685RelayConfig) and
                         config.device_class == DeviceClassControl.SWITCH):
@@ -58,7 +59,9 @@ async def async_setup_entry(
                     )
         if isinstance(port, I2CExtraMCP230xx):
             for config in port.extra_confs:
-                if (isinstance(config, MCP230RelayConfig) and
+                _LOGGER.warning(type(config))
+                if ((isinstance(config, MCP230RelayConfig) or
+                     isinstance(config, PCA9685RelayConfig)) and
                         config.device_class == DeviceClassControl.SWITCH):
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                                  f'ext{config.id}-switch')
