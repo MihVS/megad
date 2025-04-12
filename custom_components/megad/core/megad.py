@@ -63,7 +63,7 @@ class MegaD:
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685
         ]] = []
-        self.extra_ports: list[Union[I2CExtraMCP230xx]]
+        self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.url: str = url
         self.config_path: str = config_path
         self.domain: str = url.split('/')[2]

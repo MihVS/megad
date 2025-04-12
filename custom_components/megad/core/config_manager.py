@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 from .const_parse import *
 from .enums import TypePortMegaD, TypeDSensorMegaD, ModeOutMegaD, \
-    ModeWiegandMegaD, ModeI2CMegaD
+    ModeWiegandMegaD, ModeI2CMegaD, DeviceI2CMegaD
 from .exceptions import WriteConfigError
 from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
@@ -259,12 +259,18 @@ class MegaDConfigManager:
         """Создаёт конфигурацию контроллера."""
         ports = []
         extra_ports = []
+        extra_types = {}
         pids = []
         configs = {}
         for setting in self.settings:
             params = dict(
                 parse_qsl(setting, keep_blank_values=True, encoding='cp1251')
             )
+            if (params.get(TYPE_DEVICE) == DeviceI2CMegaD.PCA9685.value_plc or
+                params.get(TYPE_DEVICE) == DeviceI2CMegaD.MCP230XX.value_plc):
+                extra_types.update(
+                    {params.get(PORT_NUMBER): params.get(TYPE_DEVICE)}
+                )
             if params.get(CONFIG, '') in (MAIN_CONFIG, ID_CONFIG):
                 configs = configs | params
             elif params.get(TYPE_PORT) == TypePortMegaD.NC.value_plc:
@@ -310,12 +316,15 @@ class MegaDConfigManager:
                     if EXTRA_MIN in params:
                         extra_ports.append(PCA9685PWMConfig(**params))
                     else:
-                        extra_ports.append(PCA9685RelayConfig(**params))
+                        if (extra_types.get(params.get(PORT)) ==
+                                DeviceI2CMegaD.PCA9685.value_plc):
+                            extra_ports.append(PCA9685RelayConfig(**params))
+                        if (extra_types.get(params.get(PORT)) ==
+                                DeviceI2CMegaD.MCP230XX.value_plc):
+                            extra_ports.append(MCP230RelayConfig(**params))
                 else:
                     if EXTRA_ACTION in params:
                         extra_ports.append(MCP230PortInConfig(**params))
-                    else:
-                        extra_ports.append(MCP230RelayConfig(**params))
 
         return DeviceMegaD(
             plc=SystemConfigMegaD(**configs),
