@@ -145,37 +145,27 @@ class PortConfig(BaseModel):
     type_port: TypePortMegaD = Field(alias='pty')
     title: str = Field(alias='emt', default='')
     name: str = Field(default='')
+    device_class: str = ''
 
     @field_validator('type_port', mode='before')
     def convert_type_port(cls, value):
         return TypePortMegaD.get_value(value)
 
     @model_validator(mode='before')
-    def add_name(cls, data):
+    def add_name_device_class(cls, data):
         title = data.get('emt', '')
         name = title.split('/')[0]
         if name:
             data['name'] = name
         else:
             data['name'] = f'port{data["pn"]}'
-        return data
-
-
-class DeviceClassConfig(PortConfig):
-    """Добавляет поле класса устройства для НА"""
-
-    device_class: str = ''
-
-    @model_validator(mode='before')
-    def add_device_class(cls, data):
-        title = data.get('emt', '')
         if title.count('/') > 0:
-            device_class = title.split('/')[1]
+            device_class = title.split('/')[1].strip(':')
             data.update({'device_class': device_class})
         return data
 
 
-class InverseValueMixin(DeviceClassConfig):
+class InverseValueMixin(PortConfig):
     """Добавляет функционал инверсии значения порта для НА"""
 
     inverse: bool = False
@@ -266,7 +256,7 @@ class PortInConfig(InverseValueMixin, ActionPortMixin, BinaryDeviceClassMixin):
                 return False
 
 
-class PortOutConfig(DeviceClassConfig):
+class PortOutConfig(PortConfig):
     """Конфигурация портов выходов"""
 
     default_value: bool = Field(alias='d', default=False)
@@ -336,22 +326,11 @@ class DeviceClassPWMMixin:
 class PortOutPWMConfig(DeviceClassPWMMixin, PortOutConfig):
     """ШИМ выход"""
 
-    # device_class: DeviceClassControl = DeviceClassControl.LIGHT
     smooth: bool = Field(alias='misc', default=False)
     smooth_long: int = Field(alias='m2', default=0, ge=0, le=255)
     default_value: int = Field(alias='d', default=0, ge=0, le=255)
     min_value: int = Field(alias='pwmm', default=0, ge=0, le=255)
     inverse: bool = False
-
-    # @field_validator('device_class', mode='before')
-    # def set_device_class(cls, value):
-    #     match value:
-    #         case DeviceClassControl.LIGHT.value:
-    #             return DeviceClassControl.LIGHT
-    #         case DeviceClassControl.FAN.value:
-    #             return DeviceClassControl.FAN
-    #         case _:
-    #             return DeviceClassControl.LIGHT
 
     @field_validator('smooth', mode='before')
     def parse_default_on(cls, value):
@@ -362,7 +341,44 @@ class PortOutPWMConfig(DeviceClassPWMMixin, PortOutConfig):
                 return False
 
 
-class PortSensorConfig(PortConfig):
+class FilterSensorMixin:
+    """filter"""
+
+    filter: bool = Field(default=False)
+
+    @model_validator(mode='before')
+    def add_filter(cls, data):
+        title = data.get('emt', '')
+        data.update({'filter': False})
+        if title.count('/') > 0:
+            device_class = title.split('/')[1]
+            if device_class:
+                if device_class[-1] == ':':
+                    data.update({'filter': True})
+        return data
+
+
+class ClimateDeviceClassMixin:
+    """device class mixin"""
+
+    device_class: DeviceClassClimate = DeviceClassClimate.HOME
+
+    @field_validator('device_class', mode='before')
+    def set_device_class(cls, value):
+        match value:
+            case DeviceClassClimate.HOME.value:
+                return DeviceClassClimate.HOME
+            case DeviceClassClimate.BOILER.value:
+                return DeviceClassClimate.BOILER
+            case DeviceClassClimate.CELLAR.value:
+                return DeviceClassClimate.CELLAR
+            case DeviceClassClimate.FLOOR.value:
+                return DeviceClassClimate.FLOOR
+            case _:
+                return DeviceClassClimate.HOME
+
+
+class PortSensorConfig(ClimateDeviceClassMixin, PortConfig, FilterSensorMixin):
     """Конфигурация портов для сенсоров"""
 
     type_sensor: TypeDSensorMegaD = Field(alias='d')
@@ -390,22 +406,6 @@ class ModeControlSensorMixin(ActionPortMixin):
 class OneWireSensorConfig(
     PortSensorConfig, ModeControlSensorMixin, InverseValueMixin):
     """Сенсор температурный 1 wire"""
-
-    device_class: DeviceClassClimate = DeviceClassClimate.HOME
-
-    @field_validator('device_class', mode='before')
-    def set_device_class(cls, value):
-        match value:
-            case DeviceClassClimate.HOME.value:
-                return DeviceClassClimate.HOME
-            case DeviceClassClimate.BOILER.value:
-                return DeviceClassClimate.BOILER
-            case DeviceClassClimate.CELLAR.value:
-                return DeviceClassClimate.CELLAR
-            case DeviceClassClimate.FLOOR.value:
-                return DeviceClassClimate.FLOOR
-            case _:
-                return DeviceClassClimate.HOME
 
 
 class OneWireBusSensorConfig(PortSensorConfig):
@@ -436,7 +436,7 @@ class WiegandD0Config(WiegandConfig, ActionPortMixin):
     d1: int = Field(alias='misc', default=0, ge=0, le=255)
 
 
-class I2CConfig(PortConfig):
+class I2CConfig(ClimateDeviceClassMixin, PortConfig, FilterSensorMixin):
     """Конфигурация порта для устройств I2C"""
 
     mode: ModeI2CMegaD = Field(alias='m')

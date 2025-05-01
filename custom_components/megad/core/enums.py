@@ -154,6 +154,7 @@ class DeviceClassClimate(Enum):
     BOILER = 'b'
     CELLAR = 'c'
     FLOOR = 'f'
+    OUTSIDE = 'o'
 
 
 class TypeDSensorMegaD(EnumMegaD):

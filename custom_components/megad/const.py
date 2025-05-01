@@ -133,7 +133,8 @@ TEMPERATURE_CONDITION = {
     DeviceClassClimate.HOME: (5, 30),
     DeviceClassClimate.BOILER: (30, 80),
     DeviceClassClimate.CELLAR: (0, 20),
-    DeviceClassClimate.FLOOR: (15, 45)
+    DeviceClassClimate.FLOOR: (15, 45),
+    DeviceClassClimate.OUTSIDE: (-40, 40),
 }
 
 STATE_RELAY = ['on', 'off', '1', '0']
