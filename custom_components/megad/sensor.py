@@ -10,7 +10,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
-    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE
+    HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE,
+    TYPE_SENSOR
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
@@ -202,11 +203,25 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
         self._attr_device_info = coordinator.devices_info()
         self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'
                           f'{self.type_sensor.lower()}')
+        self.last_value: None | int | float
 
     def __repr__(self) -> str:
         if not self.hass:
             return f"<Sensor entity {self.entity_id}>"
         return super().__repr__()
+
+    def filter_temperature(self, value):
+        """Фильтр для значений температуры."""
+        return value
+
+    def filter_bad_value(self):
+        """Фильтрация неадекватных значений сенсоров."""
+        value = self._port.state.get(self.type_sensor)
+        match self.type_sensor:
+            case TYPE_SENSOR.TEMPERATURE:
+                return self.filter_temperature(value)
+            case _:
+                return value
 
     @cached_property
     def name(self) -> str:
@@ -224,6 +239,8 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
+        if self._port.conf.filter:
+            return self.filter_bad_value()
         return self._port.state.get(self.type_sensor)
 
     @cached_property

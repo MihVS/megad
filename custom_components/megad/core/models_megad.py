@@ -374,6 +374,8 @@ class ClimateDeviceClassMixin:
                 return DeviceClassClimate.CELLAR
             case DeviceClassClimate.FLOOR.value:
                 return DeviceClassClimate.FLOOR
+            case DeviceClassClimate.OUTSIDE.value:
+                return DeviceClassClimate.OUTSIDE
             case _:
                 return DeviceClassClimate.HOME
 

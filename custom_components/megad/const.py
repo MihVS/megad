@@ -37,8 +37,8 @@ NAME_SCRIPT_MEGAD = 'sct'
 TEMPERATURE = 'temp'
 HUMIDITY = 'hum'
 CO2 = 'CO2'
-UPTIME = 'uptime'
 PRESSURE = 'press'
+UPTIME = 'uptime'
 
 # Перевод сенсоров
 TYPE_SENSOR_RUS = {
@@ -106,6 +106,13 @@ GET_STATUS = 'get'
 MEGAD_ID = 'mdid'
 MEGAD_STATE = 'st'
 PORT_ID = 'pt'
+
+TypeSensor = namedtuple('TypeSensor', [
+    'TEMPERATURE', 'HUMIDITY', 'CO2', 'PRESSURE',
+])
+TYPE_SENSOR = TypeSensor(
+    TEMPERATURE='temp', HUMIDITY='hum', CO2='CO2', PRESSURE='press',
+)
 
 StateButton = namedtuple('StateButton', ['SINGLE', 'DOUBLE', 'LONG', 'OFF'])
 STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="off")
