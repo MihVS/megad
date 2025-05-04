@@ -205,11 +205,18 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
         self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'
                           f'{self.type_sensor.lower()}')
         self.last_value: None | int | float = None
+        self.info_filter()
 
     def __repr__(self) -> str:
         if not self.hass:
             return f"<Sensor entity {self.entity_id}>"
         return super().__repr__()
+
+    def info_filter(self):
+        """Вывод информации в лог при включенной фильтрации сенсора."""
+        if self._port.conf.filter:
+            _LOGGER.info(f'Включена фильтрация значения у сенсора '
+                         f'{self.entity_id}')
 
     def general_filter(self, min_value, max_value, value, value_jump):
         """Общий фильтр значений сенсоров."""
@@ -245,7 +252,11 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
     def filter_bad_value(self, value):
         """Фильтрация неадекватных значений сенсоров."""
         if self._port.conf.filter:
-            if not isinstance(value, (int, float)):
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                pass
+            if not isinstance(value, float):
                 return self.last_value
             match self.type_sensor:
                 case TYPE_SENSOR.TEMPERATURE:
