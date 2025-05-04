@@ -11,7 +11,8 @@ from . import MegaDCoordinator
 from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
     HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE,
-    TYPE_SENSOR
+    TYPE_SENSOR, TEMPERATURE_CONDITION, DEVIATION_TEMPERATURE,
+    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
@@ -203,25 +204,59 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
         self._attr_device_info = coordinator.devices_info()
         self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'
                           f'{self.type_sensor.lower()}')
-        self.last_value: None | int | float
+        self.last_value: None | int | float = None
 
     def __repr__(self) -> str:
         if not self.hass:
             return f"<Sensor entity {self.entity_id}>"
         return super().__repr__()
 
-    def filter_temperature(self, value):
-        """Фильтр для значений температуры."""
+    def general_filter(self, min_value, max_value, value, value_jump):
+        """Общий фильтр значений сенсоров."""
+        if value < min_value: value = min_value
+        elif value > max_value: value = max_value
+        if self.last_value is not None:
+            if value in (min_value, max_value) and (
+                    abs(value - self.last_value) > value_jump):
+                return self.last_value
+            elif value == 0 and abs(self.last_value) > value_jump:
+                return self.last_value
+        self.last_value = value
         return value
 
-    def filter_bad_value(self):
+    def filter_temperature(self, value):
+        """Фильтр для значений температуры."""
+        min_value, max_value = TEMPERATURE_CONDITION[
+            self._port.conf.device_class
+        ]
+        min_value -= DEVIATION_TEMPERATURE
+        max_value += DEVIATION_TEMPERATURE
+        return self.general_filter(
+            min_value, max_value, value, ALLOWED_TEMP_JUMP
+        )
+
+    def filter_humidity(self, value):
+        """Фильтр для значений влажности."""
+        min_value, max_value = 0, 100
+        return self.general_filter(
+            min_value, max_value, value, ALLOWED_HUM_JUMP
+        )
+
+    def filter_bad_value(self, value):
         """Фильтрация неадекватных значений сенсоров."""
-        value = self._port.state.get(self.type_sensor)
-        match self.type_sensor:
-            case TYPE_SENSOR.TEMPERATURE:
-                return self.filter_temperature(value)
-            case _:
-                return value
+        if self._port.conf.filter:
+            if not isinstance(value, (int, float)):
+                return self.last_value
+            match self.type_sensor:
+                case TYPE_SENSOR.TEMPERATURE:
+                    return self.filter_temperature(value)
+                case TYPE_SENSOR.HUMIDITY:
+                    return self.filter_humidity(value)
+                case _:
+                    self.last_value = value
+                    return value
+        else:
+            return value
 
     @cached_property
     def name(self) -> str:
@@ -239,9 +274,8 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
-        if self._port.conf.filter:
-            return self.filter_bad_value()
-        return self._port.state.get(self.type_sensor)
+        value = self._port.state.get(self.type_sensor)
+        return self.filter_bad_value(value)
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -269,7 +303,8 @@ class SensorBusMegaD(SensorMegaD):
     @property
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
-        return self._port.state.get(self.id_one_wire)
+        value = self._port.state.get(self.id_one_wire)
+        return self.filter_bad_value(value)
 
 
 class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):

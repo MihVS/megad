@@ -107,6 +107,10 @@ MEGAD_ID = 'mdid'
 MEGAD_STATE = 'st'
 PORT_ID = 'pt'
 
+# Максимальные допустимые скачки значений сенсоров
+ALLOWED_TEMP_JUMP = 10
+ALLOWED_HUM_JUMP = 10
+
 TypeSensor = namedtuple('TypeSensor', [
     'TEMPERATURE', 'HUMIDITY', 'CO2', 'PRESSURE',
 ])
@@ -136,12 +140,14 @@ SENSOR_CLASS = {
     UPTIME: SensorDeviceClass.DURATION
 }
 
+DEVIATION_TEMPERATURE = 10
+
 TEMPERATURE_CONDITION = {
     DeviceClassClimate.HOME: (5, 30),
     DeviceClassClimate.BOILER: (30, 80),
     DeviceClassClimate.CELLAR: (0, 20),
     DeviceClassClimate.FLOOR: (15, 45),
-    DeviceClassClimate.OUTSIDE: (-40, 40),
+    DeviceClassClimate.OUTSIDE: (-30, 40),
 }
 
 STATE_RELAY = ['on', 'off', '1', '0']
