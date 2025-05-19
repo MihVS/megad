@@ -404,6 +404,12 @@ class ModeControlSensorMixin(ActionPortMixin):
     def convert_mode(cls, value):
         return ModeSensorMegaD.get_value(value)
 
+    @field_validator('set_value', mode='before')
+    def convert_set_value(cls, value):
+        if type(value) is str:
+            return 0.0
+        return value
+
 
 class OneWireSensorConfig(
     PortSensorConfig, ModeControlSensorMixin, InverseValueMixin):
