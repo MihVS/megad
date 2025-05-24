@@ -14,7 +14,7 @@ from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
     I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D,
-    I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685
+    I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -23,7 +23,7 @@ from .config_parser import (
 )
 from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
-    ModeI2CMegaD, ModeSensorMegaD
+    ModeI2CMegaD, ModeSensorMegaD, ModeWiegandMegaD
 )
 from .exceptions import (
     MegaDBusy, InvalidPasswordMegad, FirmwareUpdateInProgress
@@ -61,7 +61,7 @@ class MegaD:
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
-            I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685
+            I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.url: str = url
@@ -275,6 +275,11 @@ class MegaD:
                         self.ports.append(DHTSensorPort(port, self.id))
                     case TypeDSensorMegaD.ONEWBUS:
                         self.ports.append(OneWireBusSensorPort(port, self.id))
+                    case TypeDSensorMegaD.W26:
+                        if port.mode == ModeWiegandMegaD.D0:
+                            self.ports.append(ReaderPort(port, self.id))
+                    case TypeDSensorMegaD.iB:
+                        self.ports.append(ReaderPort(port, self.id))
             elif (
                     port.type_port == TypePortMegaD.I2C
                     and port.mode == ModeI2CMegaD.SDA

@@ -2,14 +2,15 @@ import logging
 import re
 from abc import ABC, abstractmethod
 
-from .const_parse import EXTRA
+from .const_parse import EXTRA, WIENGAND, IBUTTON
 from .exceptions import (
     UpdateStateError, TypeSensorError, MegaDBusy, PortOFFError, PortNotInit
 )
 from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
-    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig
+    OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, WiegandConfig,
+    IButtonConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -716,8 +717,23 @@ class I2CExtraPCA9685(I2CExtraBase):
     pass
 
 
-class Reader(BasePort):
-    """Клас для считывателей ключей"""
+class ReaderPort(BasePort):
+    """Класс для считывателей ключей"""
+
+    def __init__(self, conf: WiegandConfig | IButtonConfig, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: WiegandConfig | IButtonConfig = conf
+        self._state: str = 'off'
+
+    @staticmethod
+    def _get_state(data: dict) -> str:
+        """Получение номера ключа."""
+        if WIENGAND in data:
+            return data.get(WIENGAND)
+        elif IBUTTON in data:
+            return data.get(IBUTTON)
+        else:
+            raise UpdateStateError
 
     def update_state(self, data: str | dict):
         """
@@ -725,4 +741,64 @@ class Reader(BasePort):
               {'pt': '30', 'wg': '67999c', 'mdid': '44'}
               {'pt': '30', 'ib': '9c9967003e00', 'mdid': '44'}
               {'pt': '30', 'ib': 'd2c35e003500', 'mdid': '44'}
+              'W26'
+              ''
+              'off'
+
+    {
+      "action": "",
+      "execute_action": false,
+      "net_action": "",
+      "execute_net_action": "default",
+      "filter": false,
+      "id": 30,
+      "type_port": "digital_sensor",
+      "title": "",
+      "name": "port30",
+      "device_class": "h",
+      "type_sensor": "wiegand_26",
+      "mode": "d0",
+      "d1": 31
+    },
+    {
+      "filter": false,
+      "id": 31,
+      "type_port": "digital_sensor",
+      "title": "",
+      "name": "port31",
+      "device_class": "h",
+      "type_sensor": "wiegand_26",
+      "mode": "d1"
+    },
+    {
+      "action": "",
+      "execute_action": false,
+      "net_action": "",
+      "execute_net_action": "default",
+      "filter": false,
+      "id": 32,
+      "type_port": "digital_sensor",
+      "title": "",
+      "name": "port32",
+      "device_class": "h",
+      "type_sensor": "i_button"
+    },
         """
+
+        try:
+            if isinstance(data, str):
+                if data == PORT_OFF:
+                    self._state = PORT_OFF
+            elif isinstance(data, dict):
+                self._state = self._get_state(data)
+            else:
+                raise UpdateStateError
+
+        except UpdateStateError:
+            _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
+                            f'формат данных для порта считывателя '
+                            f'(id={self.conf.id}): {data}')
+        except Exception as e:
+            _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
+                          f'данных порта №{self.conf.id}. data = {data}. '
+                          f'Исключение: {e}')

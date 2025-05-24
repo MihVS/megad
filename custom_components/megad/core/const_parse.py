@@ -14,6 +14,8 @@ EXTRA = 'ext'
 EXTRA_GROUP = 'egrp'
 EXTRA_MIN = 'emin'
 EXTRA_ACTION = 'eact'
+WIENGAND = 'wg'
+IBUTTON = 'ib'
 
 # Номера конфигураций
 MAIN_CONFIG = '1'

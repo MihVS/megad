@@ -18,7 +18,7 @@ from .const import (
     PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS, STATUS_THERMO, TIME_SLEEP_REQUEST,
     OFF, FIRMWARE_CHECKER
 )
-from .core.base_ports import OneWireSensorPort
+from .core.base_ports import OneWireSensorPort, ReaderPort
 from .core.config_manager import MegaDConfigManager
 from .core.enums import ModeInMegaD, TypePortMegaD
 from .core.exceptions import InvalidSettingPort, FirmwareUpdateInProgress
@@ -177,13 +177,13 @@ class MegaDCoordinator(DataUpdateCoordinator):
                                    f'{self.megad.config.plc.megad_id}: {err}')
 
     async def set_flashing_state(self, state):
-        """Устанавливает режим прошивки устройства"""
+        """Устанавливает режим прошивки устройства."""
         self.megad.is_flashing = state
         self.hass.loop.call_soon(self.async_update_listeners)
         self.last_update_success = not state
 
     async def _turn_off_state(self, state_off, delay, port_id, data):
-        """Возвращает выключенное состояние порта"""
+        """Возвращает выключенное состояние порта."""
         self.megad.update_port(port_id, data)
         self.hass.loop.call_soon(self.async_update_listeners)
         await asyncio.sleep(delay)
@@ -191,7 +191,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
         self.hass.loop.call_soon(self.async_update_listeners)
 
     def update_pid_state(self, pid_id: int, data: dict):
-        """Обновление состояния ПИД регулятора"""
+        """Обновление состояния ПИД регулятора."""
         self.megad.update_pid(pid_id, data)
         self.hass.loop.call_soon(self.async_update_listeners)
 
@@ -208,7 +208,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
             return
         if port.conf.type_port in (TypePortMegaD.ADC, ):
             return
-        if port.conf.mode == ModeInMegaD.C:
+        if port.conf.mode == ModeInMegaD.C or isinstance(port, ReaderPort):
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
             self.megad.update_port(port.conf.id, data)

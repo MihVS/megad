@@ -18,7 +18,7 @@ from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
-    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D, I2CSensorMBx280
+    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D, I2CSensorMBx280, ReaderPort
 )
 from .core.megad import MegaD
 
@@ -57,6 +57,11 @@ async def async_setup_entry(
         if isinstance(port, (BinaryPortCount, BinaryPortClick, BinaryPortIn)):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-count'
             sensors.append(CountSensorMegaD(
+                coordinator, port, unique_id)
+            )
+        if isinstance(port, ReaderPort):
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-reader'
+            sensors.append(ReaderSensorMegaD(
                 coordinator, port, unique_id)
             )
         if isinstance(port, OneWireSensorPort):
@@ -107,6 +112,45 @@ async def async_setup_entry(
     if sensors:
         async_add_entities(sensors)
         _LOGGER.debug(f'Добавлены сенсоры: {sensors}')
+
+
+class StringSensorMegaD(CoordinatorEntity, SensorEntity):
+    """Класс для сенсоров с текстовым значением"""
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port,
+            unique_id: str
+    ) -> None:
+        super().__init__(coordinator)
+        self._megad: MegaD = coordinator.megad
+        self._port = port
+        self._sensor_name: str = port.conf.name
+        self._unique_id: str = unique_id
+        self._attr_device_info = coordinator.devices_info()
+        self.entity_id = f'sensor.{self._megad.id}_port{port.conf.id}'
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Sensor entity {self.entity_id}>"
+        return super().__repr__()
+
+    @cached_property
+    def name(self) -> str:
+        return self._sensor_name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @property
+    def native_value(self) -> str:
+        """Возвращает состояние сенсора"""
+        return self._port.state
+
+
+class ReaderSensorMegaD(StringSensorMegaD):
+
+    _attr_icon = 'mdi:lock-smart'
 
 
 class ClickSensorMegaD(CoordinatorEntity, SensorEntity):
