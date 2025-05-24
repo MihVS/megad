@@ -153,45 +153,15 @@ class ReaderSensorMegaD(StringSensorMegaD):
     _attr_icon = 'mdi:lock-smart'
 
 
-class ClickSensorMegaD(CoordinatorEntity, SensorEntity):
+class ClickSensorMegaD(StringSensorMegaD):
 
     _attr_icon = 'mdi:gesture-tap-button'
-
-    def __init__(
-            self, coordinator: MegaDCoordinator, port: BinaryPortClick,
-            unique_id: str
-    ) -> None:
-        super().__init__(coordinator)
-        self._megad: MegaD = coordinator.megad
-        self._port: BinaryPortClick = port
-        self._sensor_name: str = port.conf.name
-        self._unique_id: str = unique_id
-        self._attr_device_info = coordinator.devices_info()
-        self.entity_id = f'sensor.{self._megad.id}_port{port.conf.id}'
-
-    def __repr__(self) -> str:
-        if not self.hass:
-            return f"<Sensor entity {self.entity_id}>"
-        return super().__repr__()
-
-    @cached_property
-    def name(self) -> str:
-        return self._sensor_name
-
-    @cached_property
-    def unique_id(self) -> str:
-        return self._unique_id
 
     @cached_property
     def capability_attributes(self):
         return {
             "options": STATE_BUTTON
         }
-
-    @property
-    def native_value(self) -> str:
-        """Возвращает состояние сенсора"""
-        return self._port.state
 
 
 class CountSensorMegaD(CoordinatorEntity, SensorEntity):
