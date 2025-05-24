@@ -714,3 +714,15 @@ class I2CExtraMCP230xx(I2CExtraBase):
 class I2CExtraPCA9685(I2CExtraBase):
     """Порт расширения PCA9685"""
     pass
+
+
+class Reader(BasePort):
+    """Клас для считывателей ключей"""
+
+    def update_state(self, data: str | dict):
+        """
+        data: {'pt': '30', 'wg': '5ec3d2', 'mdid': '44'}
+              {'pt': '30', 'wg': '67999c', 'mdid': '44'}
+              {'pt': '30', 'ib': '9c9967003e00', 'mdid': '44'}
+              {'pt': '30', 'ib': 'd2c35e003500', 'mdid': '44'}
+        """
