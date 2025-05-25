@@ -208,7 +208,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
             return
         if port.conf.type_port in (TypePortMegaD.ADC, ):
             return
-        if port.conf.mode == ModeInMegaD.C or isinstance(port, ReaderPort):
+        if isinstance(port, ReaderPort) or port.conf.mode == ModeInMegaD.C:
             await self._turn_off_state('off', 0.5, port_id, data)
         else:
             self.megad.update_port(port.conf.id, data)

@@ -738,51 +738,10 @@ class ReaderPort(BasePort):
     def update_state(self, data: str | dict):
         """
         data: {'pt': '30', 'wg': '5ec3d2', 'mdid': '44'}
-              {'pt': '30', 'wg': '67999c', 'mdid': '44'}
-              {'pt': '30', 'ib': '9c9967003e00', 'mdid': '44'}
               {'pt': '30', 'ib': 'd2c35e003500', 'mdid': '44'}
               'W26'
               ''
               'off'
-
-    {
-      "action": "",
-      "execute_action": false,
-      "net_action": "",
-      "execute_net_action": "default",
-      "filter": false,
-      "id": 30,
-      "type_port": "digital_sensor",
-      "title": "",
-      "name": "port30",
-      "device_class": "h",
-      "type_sensor": "wiegand_26",
-      "mode": "d0",
-      "d1": 31
-    },
-    {
-      "filter": false,
-      "id": 31,
-      "type_port": "digital_sensor",
-      "title": "",
-      "name": "port31",
-      "device_class": "h",
-      "type_sensor": "wiegand_26",
-      "mode": "d1"
-    },
-    {
-      "action": "",
-      "execute_action": false,
-      "net_action": "",
-      "execute_net_action": "default",
-      "filter": false,
-      "id": 32,
-      "type_port": "digital_sensor",
-      "title": "",
-      "name": "port32",
-      "device_class": "h",
-      "type_sensor": "i_button"
-    },
         """
 
         try:
