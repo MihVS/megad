@@ -4,7 +4,7 @@
 <details>
 <summary>Группа обсуждения в телеграм</summary>
 
-![telegram](./data/img/mihvs_integrations.png)
+<img src="./data/img/mihvs_integrations.png" alt="telegram" width="300" />
 
 </details>  
 
