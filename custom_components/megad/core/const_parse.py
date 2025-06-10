@@ -14,6 +14,7 @@ EXTRA = 'ext'
 EXTRA_GROUP = 'egrp'
 EXTRA_MIN = 'emin'
 EXTRA_ACTION = 'eact'
+EXTRA_TYPE = 'ety'
 WIENGAND = 'wg'
 IBUTTON = 'ib'
 

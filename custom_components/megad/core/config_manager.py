@@ -325,7 +325,11 @@ class MegaDConfigManager:
                 else:
                     if EXTRA_ACTION in params:
                         extra_ports.append(MCP230PortInConfig(**params))
-
+                    else:
+                        if params[EXTRA_TYPE].strip('\n') == '0':
+                            extra_ports.append(MCP230PortInConfig(**params))
+                        if params[EXTRA_TYPE].strip('\n') == '1':
+                            extra_ports.append(MCP230RelayConfig(**params))
         return DeviceMegaD(
             plc=SystemConfigMegaD(**configs),
             pids=pids,

@@ -563,7 +563,7 @@ class MCP230PortInConfig(
     ExtraActionPortMixin, ExtraInverseValueMixin, BinaryDeviceClassMixin):
     """Конфигурация портов цифровых входов модуля расширения MCP230."""
 
-    mode: ModeInMegaD = Field(alias='emode')
+    mode: ModeInMegaD = Field(alias='emode', default=ModeInMegaD.P_R)
     device_class: DeviceClassBinary = DeviceClassBinary.NONE
 
     @field_validator('mode', mode='before')
