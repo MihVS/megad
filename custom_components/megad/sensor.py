@@ -12,13 +12,14 @@ from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
     HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE,
     TYPE_SENSOR, TEMPERATURE_CONDITION, DEVIATION_TEMPERATURE,
-    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP
+    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP, CURRENT, VOLTAGE, RAW_VALUE
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
-    I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D, I2CSensorMBx280, ReaderPort
+    I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD, I2CSensorMBx280, ReaderPort,
+    I2CSensorINA226
 )
 from .core.megad import MegaD
 
@@ -69,7 +70,7 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, TEMPERATURE)
             )
-        if isinstance(port, (DHTSensorPort, I2CSensorSTH31, I2CSensorHTU21D)):
+        if isinstance(port, (DHTSensorPort, I2CSensorSTH31, I2CSensorHTUxxD)):
             create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, OneWireBusSensorPort):
             for id_one_wire in port.state:
@@ -92,6 +93,22 @@ async def async_setup_entry(
                 coordinator, port, unique_id_press, PRESSURE)
             )
             create_temp_hum(sensors, entry_id, coordinator, megad, port)
+        if isinstance(port, I2CSensorINA226):
+            unique_id_current = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{CURRENT}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_current, CURRENT)
+            )
+            unique_id_voltage = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{VOLTAGE}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_voltage, VOLTAGE)
+            )
+            unique_id_raw = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{RAW_VALUE}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_raw, RAW_VALUE)
+            )
         if isinstance(port, AnalogSensor):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'
             sensors.append(AnalogSensorMegaD(coordinator, port, unique_id))

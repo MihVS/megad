@@ -1,10 +1,11 @@
 from collections import namedtuple
 from dataclasses import dataclass
 
+from homeassistant.components.sensor import SensorDeviceClass
 from .core.enums import DeviceClassClimate
 from homeassistant.const import (
     UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime,
-    UnitOfPressure
+    UnitOfPressure, UnitOfElectricCurrent, UnitOfElectricPotential
 )
 from homeassistant.components.sensor.const import SensorDeviceClass
 
@@ -39,13 +40,19 @@ HUMIDITY = 'hum'
 CO2 = 'CO2'
 PRESSURE = 'press'
 UPTIME = 'uptime'
+CURRENT = 'sI'
+VOLTAGE = 'bV'
+RAW_VALUE = 'raw'
 
 # Перевод сенсоров
 TYPE_SENSOR_RUS = {
     TEMPERATURE: 'температура',
     HUMIDITY: 'влажность',
     CO2: 'CO2',
-    PRESSURE: 'давление'
+    PRESSURE: 'давление',
+    CURRENT: 'ток',
+    VOLTAGE: 'напряжение',
+    RAW_VALUE: 'сырые_данные'
 }
 
 STATUS_THERMO = 'status_thermo'
@@ -129,7 +136,10 @@ SENSOR_UNIT = {
     HUMIDITY: PERCENTAGE,
     CO2: CONCENTRATION_PARTS_PER_MILLION,
     PRESSURE: UnitOfPressure.MMHG,
-    UPTIME: UnitOfTime.MINUTES
+    UPTIME: UnitOfTime.MINUTES,
+    CURRENT: UnitOfElectricCurrent.AMPERE,
+    VOLTAGE: UnitOfElectricPotential.VOLT,
+    RAW_VALUE: UnitOfElectricCurrent.MILLIAMPERE
 }
 
 SENSOR_CLASS = {
@@ -137,7 +147,10 @@ SENSOR_CLASS = {
     HUMIDITY: SensorDeviceClass.HUMIDITY,
     CO2: SensorDeviceClass.CO2,
     PRESSURE: SensorDeviceClass.PRESSURE,
-    UPTIME: SensorDeviceClass.DURATION
+    UPTIME: SensorDeviceClass.DURATION,
+    CURRENT: SensorDeviceClass.CURRENT,
+    VOLTAGE: SensorDeviceClass.VOLTAGE,
+    RAW_VALUE: SensorDeviceClass.CURRENT,
 }
 
 DEVIATION_TEMPERATURE = 10
