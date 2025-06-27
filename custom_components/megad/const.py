@@ -1,13 +1,12 @@
 from collections import namedtuple
 from dataclasses import dataclass
 
-from homeassistant.components.sensor import SensorDeviceClass
-from .core.enums import DeviceClassClimate
+from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.const import (
     UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime,
     UnitOfPressure, UnitOfElectricCurrent, UnitOfElectricPotential
 )
-from homeassistant.components.sensor.const import SensorDeviceClass
+from .core.enums import DeviceClassClimate
 
 DOMAIN = 'megad'
 MANUFACTURER = 'ab-log'

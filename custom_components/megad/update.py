@@ -17,7 +17,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import (
-    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP
+    RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP,
+    DEFAULT_PASSWORD
 )
 from .core.config_manager import MegaDConfigManager
 from .core.const_fw import (
@@ -122,8 +123,11 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
 
     async def _write_config(self) -> None:
         """Записать конфиг на контроллер."""
+        url_list = self._megad.url.split('/')
+        url_list[-2] = DEFAULT_PASSWORD
+        url = '/'.join(url_list)
         manager_config = MegaDConfigManager(
-            self._megad.url,
+            url,
             self._megad.config_path,
             async_get_clientsession(self.hass)
         )
@@ -239,7 +243,9 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             send_socket = None
             time.sleep(1)
 
-            change_ip(DEFAULT_IP, megad_ip, password, broadcast_ip, host_ip)
+            change_ip(
+                DEFAULT_IP, megad_ip, DEFAULT_PASSWORD, broadcast_ip, host_ip
+            )
 
             asyncio.run_coroutine_threadsafe(
                 self._write_config(), self.hass.loop

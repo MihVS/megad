@@ -17,6 +17,7 @@ EXTRA_ACTION = 'eact'
 EXTRA_TYPE = 'ety'
 WIENGAND = 'wg'
 IBUTTON = 'ib'
+PASSWORD = 'pwd'
 
 # Номера конфигураций
 MAIN_CONFIG = '1'
