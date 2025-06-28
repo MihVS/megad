@@ -13,8 +13,9 @@ from .base_pids import PIDControl
 from .base_ports import (
     BinaryPortIn, ReleyPortOut, PWMPortOut, BinaryPortClick, BinaryPortCount,
     BasePort, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTU21D,
-    I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort
+    I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD,
+    I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
+    I2CSensorINA226
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -60,8 +61,9 @@ class MegaD:
         self.ports: list[Union[
             BinaryPortIn, BinaryPortClick, BinaryPortCount, ReleyPortOut,
             PWMPortOut, OneWireSensorPort, DHTSensorPort, OneWireBusSensorPort,
-            I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTU21D, AnalogSensor,
-            I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort
+            I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTUxxD, AnalogSensor,
+            I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
+            I2CSensorINA226
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.url: str = url
@@ -290,9 +292,13 @@ class MegaD:
                     case DeviceI2CMegaD.SHT31:
                         self.ports.append(I2CSensorSTH31(port, self.id))
                     case DeviceI2CMegaD.HTU21D:
-                        self.ports.append(I2CSensorHTU21D(port, self.id))
+                        self.ports.append(I2CSensorHTUxxD(port, self.id))
+                    case DeviceI2CMegaD.HTU31D:
+                        self.ports.append(I2CSensorHTUxxD(port, self.id))
                     case DeviceI2CMegaD.BMx280:
                         self.ports.append(I2CSensorMBx280(port, self.id))
+                    case DeviceI2CMegaD.INA226:
+                        self.ports.append(I2CSensorINA226(port, self.id))
                     case DeviceI2CMegaD.MCP230XX:
                         self.ports.append(I2CExtraMCP230xx(
                             port, self.id, self.get_config_extra_ports(port)

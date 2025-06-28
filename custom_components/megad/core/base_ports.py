@@ -15,7 +15,8 @@ from .models_megad import (
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
-    PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL, PCA_MODUL
+    PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL, PCA_MODUL, CURRENT, VOLTAGE,
+    RAW_VALUE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -374,6 +375,7 @@ class DigitalSensorBase(BasePort):
         """
         data: temp:24/hum:43
               CO2:980/temp:25/hum:38
+              sI:0.11/bV:12.22/raw:94
               temp:NA
         """
         try:
@@ -553,7 +555,7 @@ class I2CSensorSCD4x(I2CSensorXXX):
 
 
 class I2CSensorMBx280(I2CSensorXXX):
-    """Класс для сенсора типа MBx280 I2C интерфейса"""
+    """Класс для сенсора типа MBx280 I2C интерфейса."""
 
     def short_data(self, data):
         """
@@ -563,16 +565,27 @@ class I2CSensorMBx280(I2CSensorXXX):
         self.parse_data(data, [TEMPERATURE, PRESSURE, HUMIDITY])
 
 
+class I2CSensorINA226(I2CSensorXXX):
+    """Класс для сенсора измерителя тока и напряжения."""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 0.11/12.22/94
+        """
+        self.parse_data(data, [CURRENT, VOLTAGE, RAW_VALUE])
+
+
 class I2CSensorSTH31(TempHumSensor):
-    """Класс для сенсора типа STH31 I2C интерфейса"""
+    """Класс для сенсора типа STH31 I2C интерфейса."""
 
     def __init__(self, conf: I2CConfig, megad_id):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
 
 
-class I2CSensorHTU21D(TempHumSensor):
-    """Класс для сенсора типа HTU21D I2C интерфейса"""
+class I2CSensorHTUxxD(TempHumSensor):
+    """Класс для сенсора типа HTUxxD I2C интерфейса"""
 
     def __init__(self, conf: I2CConfig, megad_id):
         super().__init__(conf, megad_id)

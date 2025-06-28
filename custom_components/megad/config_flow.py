@@ -53,7 +53,7 @@ async def validate_url(hass: HomeAssistant, user_input: str) -> str:
 
     for url in urls:
         try:
-            async with session.get(url, timeout=1) as response:
+            async with session.get(url, timeout=3) as response:
                 if response.status == 200:
                     _LOGGER.debug(f'Преобразованный URL: {url}')
                     return url
@@ -231,7 +231,7 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
             except InvalidSlug:
                 _LOGGER.error(f'Проверьте в настройках контроллера поле '
                               f'Script. Оно должно быть = megad.')
-                errors["base"] = "validate_slug"
+                errors['base'] = 'validate_slug'
             except ValidationError as e:
                 field_server = False
                 for error in e.errors():
@@ -241,13 +241,16 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                     _LOGGER.error(f'Проверьте в настройках контроллера '
                                   f'поле SRV. Адрес сервера должен быть '
                                   f'указан.')
-                    errors["base"] = "field_server_empty"
+                    errors['base'] = 'field_server_empty'
                 else:
                     _LOGGER.error(f'Ошибка валидации файла конфигурации: {e}')
-                    errors["base"] = "validate_config"
+                    errors['base'] = 'validate_config'
+            except aiohttp.client_exceptions.ClientResponseError as e:
+                _LOGGER.error(f'Ошибка авторизации MegaD: {e}')
+                errors['base'] = 'unauthorized'
             except Exception as e:
                 _LOGGER.error(f'Что-то пошло не так, неизвестная ошибка. {e}')
-                errors["base"] = "unknown"
+                errors['base'] = "unknown"
 
         config_list = await get_list_config_megad(
             name_file, self.get_path_to_config()

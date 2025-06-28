@@ -4,7 +4,7 @@
 <details>
 <summary>Группа обсуждения в телеграм</summary>
 
-![telegram](./data/img/mihvs_integrations.png)
+<img src="./data/img/mihvs_integrations.png" alt="telegram" width="300" />
 
 </details>  
 
@@ -238,6 +238,8 @@ MegaD в поле "Mode" стоит значение "P&R" или значени
 - MBx280 (температура, атмосферное давление, влажность)
 - SHT31 (температура, влажность)
 - HTU21D (температура, влажность)
+- HTU31D (температура, влажность)
+- INA226 (ток, напряжение, сырые данные)
 
 ### Аналоговые сенсоры.
 

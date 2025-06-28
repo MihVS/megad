@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+from http import HTTPStatus
 from urllib.parse import parse_qsl
 
 import aiofiles
@@ -10,9 +11,11 @@ from aiohttp import ClientResponse
 from bs4 import BeautifulSoup
 
 from .const_parse import *
-from .enums import TypePortMegaD, TypeDSensorMegaD, ModeOutMegaD, \
-    ModeWiegandMegaD, ModeI2CMegaD, DeviceI2CMegaD
-from .exceptions import WriteConfigError
+from .enums import (
+    TypePortMegaD, TypeDSensorMegaD, ModeOutMegaD,ModeWiegandMegaD,
+    ModeI2CMegaD, DeviceI2CMegaD
+)
+from .exceptions import WriteConfigError, InvalidAuthorized
 from .models_megad import (
     DeviceMegaD, PortConfig, PortInConfig, PortOutRelayConfig,
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
@@ -221,16 +224,38 @@ class MegaDConfigManager:
             response = await self.request_to_megad(line_config)
             _LOGGER.debug(f'Статус: {response.status}. Ответ контроллера: '
                           f'{await response.text(encoding="cp1251")}')
+            if response.status == HTTPStatus.UNAUTHORIZED:
+                raise InvalidAuthorized
+        except InvalidAuthorized:
+            _LOGGER.error(f'Неверный пароль в url: {self.url}')
         except Exception as e:
             raise WriteConfigError(e)
 
+    def check_pwd_form_config(self, first_line_config: str):
+        """Получить текущий пароль из конфигурации."""
+        params = dict(
+            parse_qsl(
+                first_line_config, keep_blank_values=True, encoding='cp1251'
+            )
+        )
+        url_list = self.url.split('/')
+        pwd_from_config = params.get(PASSWORD)
+        current_pwd = url_list[-2]
+        _LOGGER.debug(f'Текущий пароль: {current_pwd}')
+        _LOGGER.debug(f'Пароль из конфигурационного файла: {pwd_from_config}')
+        if current_pwd != pwd_from_config:
+            url_list[-2] = pwd_from_config
+            self.url = '/'.join(url_list)
+
     async def upload_config(self, timeout=0):
-        """Загрузка конфигурации на контроллер"""
-        for config in self.settings:
+        """Загрузка конфигурации на контроллер."""
+        for i, config in enumerate(self.settings):
             config = config.strip()
             if not config:
                 continue
             await self.set_config(config)
+            if i == 0:
+                self.check_pwd_form_config(config)
             if 'nr=1' not in config:
                 await asyncio.sleep(2)
             await asyncio.sleep(timeout)
@@ -238,7 +263,7 @@ class MegaDConfigManager:
         await self.request_to_megad({RESTART: ON})
 
     async def read_config_file(self, path: str = ''):
-        """Читает конфигурацию из файла и обновляет её у объекта"""
+        """Читает конфигурацию из файла и обновляет её у объекта."""
         if not path:
             path = self.config_file_path
         async with aiofiles.open(path, "r", encoding="cp1251") as file:
@@ -325,7 +350,11 @@ class MegaDConfigManager:
                 else:
                     if EXTRA_ACTION in params:
                         extra_ports.append(MCP230PortInConfig(**params))
-
+                    else:
+                        if params[EXTRA_TYPE].strip('\n') == '0':
+                            extra_ports.append(MCP230PortInConfig(**params))
+                        if params[EXTRA_TYPE].strip('\n') == '1':
+                            extra_ports.append(MCP230RelayConfig(**params))
         return DeviceMegaD(
             plc=SystemConfigMegaD(**configs),
             pids=pids,
