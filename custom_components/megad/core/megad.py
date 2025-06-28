@@ -218,10 +218,10 @@ class MegaD:
                 await asyncio.sleep(TIME_SLEEP_REQUEST)
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
-            elif isinstance(port, I2CSensorSCD4x):
-                await asyncio.sleep(TIME_SLEEP_REQUEST)
-                state = await self.get_status_scd4x(port)
-                port.update_state(state)
+            # elif isinstance(port, I2CSensorSCD4x):
+            #     await asyncio.sleep(TIME_SLEEP_REQUEST)
+            #     state = await self.get_status_scd4x(port)
+            #     port.update_state(state)
 
     async def get_status_one_wire_bus(self, port: OneWireBusSensorPort) -> str:
         """Обновление шины сенсоров порта 1 wire"""
@@ -231,17 +231,20 @@ class MegaD:
                       f'{text}')
         return text
 
-    async def get_status_scd4x(self, port: I2CSensorSCD4x) -> str:
-        """Обновление сенсора СО2 типа SCD4x"""
-        params = {
-            PORT: port.conf.id,
-            SCL_PORT: port.conf.scl,
-            I2C_DEVICE: port.conf.device
-        }
-        text = await self.get_status(params)
-        _LOGGER.debug(f'Состояние I2C сенсора {self.id}-{port.conf.name}: '
-                      f'{text}')
-        return text
+    # Нужно подумать над реализацией опроса I2C подключенных шиной.
+    # !Префикс добавлен для создания уникальных id
+
+    # async def get_status_scd4x(self, port: I2CSensorSCD4x) -> str:
+    #     """Обновление сенсора СО2 типа SCD4x"""
+    #     params = {
+    #         PORT: port.conf.id,
+    #         SCL_PORT: port.conf.scl,
+    #         I2C_DEVICE: port.conf.device
+    #     }
+    #     text = await self.get_status(params)
+    #     _LOGGER.debug(f'Состояние I2C сенсора {self.id}-{port.conf.name}: '
+    #                   f'{text}')
+    #     return text
 
     def init_ports(self):
         """Инициализация портов. Разделение их на устройства."""

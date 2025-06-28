@@ -342,10 +342,11 @@ class PWMPortOut(BasePort):
 class DigitalSensorBase(BasePort):
     """Базовый класс для цифровых сенсоров"""
 
-    def __init__(self, conf: PortSensorConfig, megad_id):
+    def __init__(self, conf: PortSensorConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: PortSensorConfig = conf
         self._state: dict = {}
+        self.prefix = prefix
 
     @staticmethod
     def get_states(raw_data: str) -> dict:
@@ -518,8 +519,8 @@ class OneWireBusSensorPort(DigitalSensorBase):
 class I2CSensorXXX(DigitalSensorBase):
     """Класс для сенсора I2C интерфейса"""
 
-    def __init__(self, conf: I2CConfig, megad_id):
-        super().__init__(conf, megad_id)
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
+        super().__init__(conf, megad_id, prefix)
         self.conf: I2CConfig = conf
 
     def parse_data(self, data, keys):
@@ -579,17 +580,19 @@ class I2CSensorINA226(I2CSensorXXX):
 class I2CSensorSTH31(TempHumSensor):
     """Класс для сенсора типа STH31 I2C интерфейса."""
 
-    def __init__(self, conf: I2CConfig, megad_id):
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
+        self.prefix = prefix
 
 
 class I2CSensorHTUxxD(TempHumSensor):
     """Класс для сенсора типа HTUxxD I2C интерфейса"""
 
-    def __init__(self, conf: I2CConfig, megad_id):
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
+        self.prefix = prefix
 
 
 class AnalogSensor(BasePort):
