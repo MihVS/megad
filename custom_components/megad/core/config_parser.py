@@ -93,6 +93,13 @@ async def get_megad_id_server(page_cf: str) -> str:
     return mdid_input.get('value')
 
 
+def get_names_i2c(page: str) -> list[str]:
+    """Получает названия сенсоров I2C из html."""
+    soup = BeautifulSoup(page, 'lxml')
+    hrefs = soup.find_all('a')
+    return [href.text for href, in hrefs[1:]]
+
+
 def get_params_pid(page: str) -> dict:
     """Получает параметры настройки ПИД регулятора из страницы"""
     params = dict(parse_qsl(
