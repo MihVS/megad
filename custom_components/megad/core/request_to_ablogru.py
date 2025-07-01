@@ -5,8 +5,7 @@ from http import HTTPStatus
 import async_timeout
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from .. import TIME_OUT_UPDATE_DATA
-from ..const import RELEASE_URL, DOMAIN, ENTRIES
+from ..const import RELEASE_URL, DOMAIN, ENTRIES, TIME_OUT_UPDATE_DATA
 
 _LOGGER = logging.getLogger(__name__)
 

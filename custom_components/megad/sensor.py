@@ -19,7 +19,7 @@ from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
     I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD, I2CSensorMBx280, ReaderPort,
-    I2CSensorINA226, I2CSensorBH1750
+    I2CSensorINA226, I2CSensorBH1750, I2CSensorT67xx, I2CSensorBMP180
 )
 from .core.megad import MegaD
 
@@ -119,6 +119,25 @@ async def async_setup_entry(
                          f'{LUXURY}{prefix}')
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, LUXURY, prefix)
+            )
+        if isinstance(port, I2CSensorT67xx):
+            prefix = port.prefix
+            unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                         f'{LUXURY}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id, CO2, prefix)
+            )
+        if isinstance(port, I2CSensorBMP180):
+            prefix = port.prefix
+            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                              f'{TEMPERATURE}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_temp, TEMPERATURE, prefix)
+            )
+            unique_id_press = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                               f'{PRESSURE}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_press, PRESSURE, prefix)
             )
         if isinstance(port, AnalogSensor):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'

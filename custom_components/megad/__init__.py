@@ -14,9 +14,9 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator, UpdateFailed
 )
 from .const import (
-    TIME_UPDATE, DOMAIN, MANUFACTURER, TIME_OUT_UPDATE_DATA, COUNTER_CONNECT,
-    PLATFORMS, ENTRIES, CURRENT_ENTITY_IDS, STATUS_THERMO, TIME_SLEEP_REQUEST,
-    OFF, FIRMWARE_CHECKER
+    TIME_UPDATE, DOMAIN, MANUFACTURER, COUNTER_CONNECT, PLATFORMS, ENTRIES,
+    CURRENT_ENTITY_IDS, STATUS_THERMO, TIME_SLEEP_REQUEST, OFF,
+    FIRMWARE_CHECKER, TIME_OUT_UPDATE_DATA_GENERAL
 )
 from .core.base_ports import OneWireSensorPort, ReaderPort
 from .core.config_manager import MegaDConfigManager
@@ -156,7 +156,7 @@ class MegaDCoordinator(DataUpdateCoordinator):
         try:
             if self.megad.is_flashing:
                 raise FirmwareUpdateInProgress
-            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
+            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA_GENERAL):
                 await self.megad.update_data()
                 return self.megad
         except FirmwareUpdateInProgress:
