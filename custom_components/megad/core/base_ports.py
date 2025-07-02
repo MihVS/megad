@@ -16,7 +16,7 @@ from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
     PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL, PCA_MODUL, CURRENT, VOLTAGE,
-    RAW_VALUE
+    RAW_VALUE, LUXURY
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -342,10 +342,11 @@ class PWMPortOut(BasePort):
 class DigitalSensorBase(BasePort):
     """Базовый класс для цифровых сенсоров"""
 
-    def __init__(self, conf: PortSensorConfig, megad_id):
+    def __init__(self, conf: PortSensorConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: PortSensorConfig = conf
         self._state: dict = {}
+        self.prefix = prefix
 
     @staticmethod
     def get_states(raw_data: str) -> dict:
@@ -465,7 +466,7 @@ class TempHumSensor(DigitalSensorBase):
             self._state[HUMIDITY] = hum
         except ValueError:
             _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
-                            f'port{self.conf.id}: {data}')
+                            f'port{self.conf.id}{self.prefix}: {data}')
 
     def check_type_sensor(self, data):
         """Проверка типа сенсора по полученным данным"""
@@ -516,10 +517,10 @@ class OneWireBusSensorPort(DigitalSensorBase):
 
 
 class I2CSensorXXX(DigitalSensorBase):
-    """Класс для сенсора I2C интерфейса"""
+    """Класс для сенсора I2C интерфейса с тройными данными."""
 
-    def __init__(self, conf: I2CConfig, megad_id):
-        super().__init__(conf, megad_id)
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
+        super().__init__(conf, megad_id, prefix)
         self.conf: I2CConfig = conf
 
     def parse_data(self, data, keys):
@@ -534,7 +535,7 @@ class I2CSensorXXX(DigitalSensorBase):
             self._state.update(dict(zip(keys, values)))
         except ValueError:
             _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
-                            f'port{self.conf.id}: {data}')
+                            f'port{self.conf.id}{self.prefix}: {data}')
 
     def check_type_sensor(self, data):
         """Проверка типа сенсора по полученным данным"""
@@ -579,17 +580,110 @@ class I2CSensorINA226(I2CSensorXXX):
 class I2CSensorSTH31(TempHumSensor):
     """Класс для сенсора типа STH31 I2C интерфейса."""
 
-    def __init__(self, conf: I2CConfig, megad_id):
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
+        self.prefix = prefix
 
 
 class I2CSensorHTUxxD(TempHumSensor):
     """Класс для сенсора типа HTUxxD I2C интерфейса"""
 
-    def __init__(self, conf: I2CConfig, megad_id):
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
         super().__init__(conf, megad_id)
         self.conf: I2CConfig = conf
+        self.prefix = prefix
+
+
+class I2CSensorXX(DigitalSensorBase):
+    """Класс для сенсоров I2C интерфейса с одним параметром."""
+
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
+        super().__init__(conf, megad_id, prefix)
+        self.conf: I2CConfig = conf
+
+    def parse_data(self, data, keys):
+        """
+        Общий метод обработки данных.
+        data: Х/Х
+        """
+        try:
+            values = data.split('/')
+            if len(values) != len(keys):
+                raise ValueError
+            self._state.update(dict(zip(keys, values)))
+        except ValueError:
+            _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
+                            f'port{self.conf.id}{self.prefix}: {data}')
+
+    def check_type_sensor(self, data):
+        """Проверка типа сенсора по полученным данным"""
+        if data:
+            if len(data.split('/')) != 2:
+                raise TypeSensorError
+
+
+class I2CSensorBMP180(I2CSensorXX):
+    """Класс для сенсора BMP180"""
+
+    def short_data(self, data):
+        self.parse_data(data, [TEMPERATURE, PRESSURE])
+
+
+class I2CSensorX(DigitalSensorBase):
+    """Класс для сенсоров I2C интерфейса с одним параметром."""
+
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
+        super().__init__(conf, megad_id, prefix)
+        self.conf: I2CConfig = conf
+
+    def parse_data(self, data: str, key: str):
+        """
+        Общий метод обработки данных.
+        data: Х
+        """
+        try:
+            self._state[key] = data
+        except ValueError:
+            _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
+                            f'port{self.conf.id}{self.prefix}: {data}')
+
+
+class I2CSensorILLUM(I2CSensorX):
+    """Класс для сенсора освещённости I2C интерфейса."""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 125
+        """
+        self.parse_data(data, LUXURY)
+
+
+class I2CSensorBH1750(I2CSensorILLUM):
+    """Класс для сенсора BH1750 I2C интерфейса."""
+    pass
+
+
+class I2CSensorMAX44009(I2CSensorILLUM):
+    """Класс для сенсора MAX44009 I2C интерфейса."""
+    pass
+
+
+class I2CSensorTSL2591(I2CSensorILLUM):
+    """Класс для сенсора TSL2591 I2C интерфейса."""
+    pass
+
+
+class I2CSensorT67xx(I2CSensorX):
+    """Класс для сенсора CO2 I2C интерфейса."""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 826
+        """
+        self.parse_data(data, CO2)
 
 
 class AnalogSensor(BasePort):

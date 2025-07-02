@@ -12,14 +12,14 @@ from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
     HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE,
     TYPE_SENSOR, TEMPERATURE_CONDITION, DEVIATION_TEMPERATURE,
-    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP, CURRENT, VOLTAGE, RAW_VALUE
+    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP, CURRENT, VOLTAGE, RAW_VALUE, LUXURY
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
     I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD, I2CSensorMBx280, ReaderPort,
-    I2CSensorINA226
+    I2CSensorINA226, I2CSensorBH1750, I2CSensorT67xx, I2CSensorBMP180
 )
 from .core.megad import MegaD
 
@@ -28,14 +28,15 @@ _LOGGER = logging.getLogger(__name__)
 
 def create_temp_hum(sensors, entry_id, coordinator, megad, port):
     """Создаём сенсоры температуры и влажности."""
+    prefix = port.prefix
     unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                      f'{TEMPERATURE}')
+                      f'{TEMPERATURE}{prefix}')
     sensors.append(SensorMegaD(
-        coordinator, port, unique_id_temp, TEMPERATURE)
+        coordinator, port, unique_id_temp, TEMPERATURE, prefix)
     )
-    unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}'
+    unique_id_hum = f'{entry_id}-{megad.id}-{port.conf.id}-{HUMIDITY}{prefix}'
     sensors.append(SensorMegaD(
-        coordinator, port, unique_id_hum, HUMIDITY)
+        coordinator, port, unique_id_hum, HUMIDITY, prefix)
     )
 
 
@@ -80,34 +81,63 @@ async def async_setup_entry(
                     coordinator, port, unique_id, TEMPERATURE, id_one_wire)
                 )
         if isinstance(port, I2CSensorSCD4x):
+            prefix = port.prefix
             unique_id_co2 = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                             f'{CO2.lower()}')
+                             f'{CO2.lower()}{prefix}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_co2, CO2)
+                coordinator, port, unique_id_co2, CO2, prefix)
             )
             create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, I2CSensorMBx280):
+            prefix = port.prefix
             unique_id_press = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                               f'{PRESSURE}')
+                               f'{PRESSURE}{prefix}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_press, PRESSURE)
+                coordinator, port, unique_id_press, PRESSURE, prefix)
             )
             create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, I2CSensorINA226):
+            prefix = port.prefix
             unique_id_current = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                                 f'{CURRENT}')
+                                 f'{CURRENT}{prefix}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_current, CURRENT)
+                coordinator, port, unique_id_current, CURRENT, prefix)
             )
             unique_id_voltage = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                                 f'{VOLTAGE}')
+                                 f'{VOLTAGE}{prefix}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_voltage, VOLTAGE)
+                coordinator, port, unique_id_voltage, VOLTAGE, prefix)
             )
             unique_id_raw = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                                 f'{RAW_VALUE}')
+                             f'{RAW_VALUE}{prefix}')
             sensors.append(SensorMegaD(
-                coordinator, port, unique_id_raw, RAW_VALUE)
+                coordinator, port, unique_id_raw, RAW_VALUE, prefix)
+            )
+        if isinstance(port, I2CSensorBH1750):
+            prefix = port.prefix
+            unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                         f'{LUXURY}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id, LUXURY, prefix)
+            )
+        if isinstance(port, I2CSensorT67xx):
+            prefix = port.prefix
+            unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                         f'{LUXURY}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id, CO2, prefix)
+            )
+        if isinstance(port, I2CSensorBMP180):
+            prefix = port.prefix
+            unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                              f'{TEMPERATURE}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_temp, TEMPERATURE, prefix)
+            )
+            unique_id_press = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                               f'{PRESSURE}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id_press, PRESSURE, prefix)
             )
         if isinstance(port, AnalogSensor):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'
@@ -223,18 +253,18 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
 
     def __init__(
             self, coordinator: MegaDCoordinator, port: DigitalSensorBase,
-            unique_id: str, type_sensor: str
+            unique_id: str, type_sensor: str, prefix: str = ''
     ) -> None:
         super().__init__(coordinator)
         self._megad: MegaD = coordinator.megad
         self._port: DigitalSensorBase = port
         self.type_sensor = type_sensor
         self._sensor_name: str = (f'{port.conf.name} '
-                                  f'{TYPE_SENSOR_RUS[type_sensor]}')
+                                  f'{TYPE_SENSOR_RUS[type_sensor]}{prefix}')
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
         self.entity_id = (f'sensor.{self._megad.id}_port{port.conf.id}_'
-                          f'{self.type_sensor.lower()}')
+                          f'{self.type_sensor.lower()}{prefix}')
         self.last_value: None | int | float = None
         self.info_filter()
 
