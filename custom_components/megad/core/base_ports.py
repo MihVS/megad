@@ -16,7 +16,7 @@ from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
     TEMPERATURE, PLC_BUSY, HUMIDITY, PORT_OFF, CO2, DIRECTION, STATUS_THERMO,
     PORT, NOT_AVAILABLE, PRESSURE, MCP_MODUL, PCA_MODUL, CURRENT, VOLTAGE,
-    RAW_VALUE, LUXURY
+    RAW_VALUE, LUXURY, BAR
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -684,6 +684,17 @@ class I2CSensorT67xx(I2CSensorX):
         data: 826
         """
         self.parse_data(data, CO2)
+
+
+class I2CSensorPT(I2CSensorX):
+    """Класс для сенсора давления жидкости I2C интерфейса."""
+
+    def short_data(self, data):
+        """
+        Обработка короткой записи данных сенсора
+        data: 3.13
+        """
+        self.parse_data(data, BAR)
 
 
 class AnalogSensor(BasePort):

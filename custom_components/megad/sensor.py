@@ -12,14 +12,16 @@ from .const import (
     DOMAIN, STATE_BUTTON, SENSOR_UNIT, SENSOR_CLASS, TEMPERATURE, UPTIME,
     HUMIDITY, ENTRIES, CURRENT_ENTITY_IDS, CO2, TYPE_SENSOR_RUS, PRESSURE,
     TYPE_SENSOR, TEMPERATURE_CONDITION, DEVIATION_TEMPERATURE,
-    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP, CURRENT, VOLTAGE, RAW_VALUE, LUXURY
+    ALLOWED_TEMP_JUMP, ALLOWED_HUM_JUMP, CURRENT, VOLTAGE, RAW_VALUE, LUXURY,
+    BAR
 )
 from .core.base_pids import PIDControl
 from .core.base_ports import (
     BinaryPortClick, BinaryPortCount, BinaryPortIn, OneWireSensorPort,
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
     I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD, I2CSensorMBx280, ReaderPort,
-    I2CSensorINA226, I2CSensorBH1750, I2CSensorT67xx, I2CSensorBMP180
+    I2CSensorINA226, I2CSensorBH1750, I2CSensorT67xx, I2CSensorBMP180,
+    I2CSensorPT
 )
 from .core.megad import MegaD
 
@@ -138,6 +140,13 @@ async def async_setup_entry(
                                f'{PRESSURE}{prefix}')
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id_press, PRESSURE, prefix)
+            )
+        if isinstance(port, I2CSensorPT):
+            prefix = port.prefix
+            unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                         f'{BAR}{prefix}')
+            sensors.append(SensorMegaD(
+                coordinator, port, unique_id, BAR, prefix)
             )
         if isinstance(port, AnalogSensor):
             unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-analog'
