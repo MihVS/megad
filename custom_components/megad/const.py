@@ -55,7 +55,8 @@ TYPE_SENSOR_RUS = {
     CURRENT: 'ток',
     VOLTAGE: 'напряжение',
     RAW_VALUE: 'сырые_данные',
-    LUXURY: 'освещённость'
+    LUXURY: 'освещённость',
+    BAR: 'давление',
 }
 
 STATUS_THERMO = 'status_thermo'
