@@ -44,6 +44,7 @@ UPTIME = 'uptime'
 CURRENT = 'sI'
 VOLTAGE = 'bV'
 RAW_VALUE = 'raw'
+BAR = 'bar'
 
 # Перевод сенсоров
 TYPE_SENSOR_RUS = {
@@ -54,7 +55,8 @@ TYPE_SENSOR_RUS = {
     CURRENT: 'ток',
     VOLTAGE: 'напряжение',
     RAW_VALUE: 'сырые_данные',
-    LUXURY: 'освещённость'
+    LUXURY: 'освещённость',
+    BAR: 'давление',
 }
 
 STATUS_THERMO = 'status_thermo'
@@ -144,7 +146,8 @@ SENSOR_UNIT = {
     CURRENT: UnitOfElectricCurrent.AMPERE,
     VOLTAGE: UnitOfElectricPotential.VOLT,
     RAW_VALUE: UnitOfElectricCurrent.MILLIAMPERE,
-    LUXURY: LIGHT_LUX
+    LUXURY: LIGHT_LUX,
+    BAR: UnitOfPressure.BAR,
 }
 
 SENSOR_CLASS = {
@@ -156,7 +159,8 @@ SENSOR_CLASS = {
     CURRENT: SensorDeviceClass.CURRENT,
     VOLTAGE: SensorDeviceClass.VOLTAGE,
     RAW_VALUE: SensorDeviceClass.CURRENT,
-    LUXURY: SensorDeviceClass.ILLUMINANCE
+    LUXURY: SensorDeviceClass.ILLUMINANCE,
+    BAR: SensorDeviceClass.PRESSURE,
 }
 
 DEVIATION_TEMPERATURE = 10

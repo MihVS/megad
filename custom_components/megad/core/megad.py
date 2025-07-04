@@ -16,7 +16,7 @@ from .base_ports import (
     I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD,
     I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorILLUM, I2CSensorMAX44009,
-    I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180
+    I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -67,7 +67,7 @@ class MegaD:
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTUxxD, AnalogSensor,
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
             I2CSensorINA226, I2CSensorBH1750, I2CSensorMAX44009,
-            I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180
+            I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.config_ports_bus_i2c = []
@@ -242,6 +242,8 @@ class MegaD:
                     state = await self.get_status_t67xx(port, name_sensor)
                 elif isinstance(port, I2CSensorBMP180):
                     state = await self.get_status_bmp180(port, name_sensor)
+                elif isinstance(port, I2CSensorPT):
+                    state = await self.get_status_pt(port, name_sensor)
 
                 _LOGGER.debug(
                     f'State {port.conf.id}{port.prefix}: {state}'
@@ -304,6 +306,11 @@ class MegaD:
 
     async def get_status_bmp180(self, port: I2CSensorBMP180, name_sensor: str):
         """Обновление сенсора тока типа BMP180"""
+        return await self.get_status_i2c(port, name_sensor, 2)
+
+    async def get_status_pt(self, port: I2CSensorPT, name_sensor: str):
+        """Обновление сенсора тока типа PTsensor"""
+        await self.get_status_i2c(port, name_sensor, 1)
         return await self.get_status_i2c(port, name_sensor, 2)
 
     def init_ports(self):
@@ -374,6 +381,8 @@ class MegaD:
                         self.ports.append(I2CSensorMAX44009(port, self.id))
                     case DeviceI2CMegaD.TSL2591:
                         self.ports.append(I2CSensorTSL2591(port, self.id))
+                    case DeviceI2CMegaD.PTsensor:
+                        self.ports.append(I2CSensorPT(port, self.id))
                     case DeviceI2CMegaD.MCP230XX:
                         self.ports.append(I2CExtraMCP230xx(
                             port, self.id, self.get_config_extra_ports(port)
@@ -459,6 +468,10 @@ class MegaD:
                     case DeviceI2CMegaD.BMP180.value:
                         self.ports.append(
                             I2CSensorBMP180(port, self.id, f'_{sensor_name}_{i}')
+                        )
+                    case DeviceI2CMegaD.PTsensor.value:
+                        self.ports.append(
+                            I2CSensorPT(port, self.id, f'_{sensor_name}_{i}')
                         )
                     case _:
                         _LOGGER.info(f'Интеграция пока не поддерживает в шине '
