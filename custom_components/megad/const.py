@@ -108,6 +108,7 @@ PID_I_FACTOR = 'pidif'
 PID_D_FACTOR = 'piddf'
 SET_TIME = 'stime'
 RESTART = 'restart'
+DISPLAY_COMMAND = 'disp_cmd'
 
 # Значения запроса
 ON = 1
@@ -185,7 +186,8 @@ PLATFORMS = [
     'fan',
     'climate',
     'number',
-    'update'
+    'update',
+    'text'
 ]
 
 

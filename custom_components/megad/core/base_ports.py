@@ -10,7 +10,7 @@ from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
     OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, WiegandConfig,
-    IButtonConfig
+    IButtonConfig, I2CSDAConfig
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -879,3 +879,18 @@ class ReaderPort(BasePort):
             _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
+
+
+class I2CDisplayPort(BasePort):
+    """Класс для дисплеев."""
+
+    def __init__(self, conf: I2CSDAConfig, megad_id):
+        super().__init__(conf, megad_id)
+
+    def update_state(self, raw_data):
+        """Состояние порта всегда пустое."""
+        if not raw_data:
+            _LOGGER.warning(f'Порт {self.conf.id} устройства Megad '
+                            f'id={self.megad_id} настроен как дисплей. '
+                            f'Перечитайте настройки контроллера.')
+

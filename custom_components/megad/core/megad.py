@@ -16,7 +16,8 @@ from .base_ports import (
     I2CSensorSCD4x, I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD,
     I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorILLUM, I2CSensorMAX44009,
-    I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT
+    I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
+    I2CDisplayPort
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -67,7 +68,8 @@ class MegaD:
             I2CSensorSCD4x, I2CSensorSTH31, I2CSensorHTUxxD, AnalogSensor,
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
             I2CSensorINA226, I2CSensorBH1750, I2CSensorMAX44009,
-            I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT
+            I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
+            I2CDisplayPort
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.config_ports_bus_i2c = []
@@ -223,6 +225,8 @@ class MegaD:
                 await asyncio.sleep(TIME_SLEEP_REQUEST)
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
+            elif isinstance(port, I2CDisplayPort):
+                pass
             elif port.prefix:
                 name_sensor = port.prefix.split('_')[1].lower()
                 if isinstance(port, (I2CSensorHTUxxD, I2CSensorSTH31)):
@@ -391,6 +395,8 @@ class MegaD:
                         self.ports.append(I2CExtraPCA9685(
                             port, self.id, self.get_config_extra_ports(port)
                         ))
+                    case DeviceI2CMegaD.SSD1306 | DeviceI2CMegaD.LCD1602:
+                        self.ports.append(I2CDisplayPort(port, self.id))
                     case _:
                         _LOGGER.info(f'Интеграция пока не поддерживает '
                                      f'I2C устройство: {port.device.value}. '
