@@ -37,6 +37,11 @@ class MegadHttpView(HomeAssistantView):
         coordinator = None
         for entry_id in entry_ids:
             coordinator_temp = hass.data[DOMAIN][ENTRIES][entry_id]
+            if coordinator_temp is None:
+                _LOGGER.warning(f'coordinator_temp is None. params: {params}')
+                _LOGGER.warning(f'ENTRIES: {hass.data[DOMAIN][ENTRIES]}')
+                _LOGGER.warning(f'entry_id: {entry_id}')
+                return None
             if coordinator_temp.megad.domain == host:
                 coordinator = coordinator_temp
 
