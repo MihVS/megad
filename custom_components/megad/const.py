@@ -109,6 +109,9 @@ PID_D_FACTOR = 'piddf'
 SET_TIME = 'stime'
 RESTART = 'restart'
 DISPLAY_COMMAND = 'disp_cmd'
+TEXT = 'text'
+ROW = 'row'
+COLUMN = 'col'
 
 # Значения запроса
 ON = 1

@@ -226,8 +226,10 @@ class MegaD:
                 state = await self.get_status_one_wire_bus(port)
                 port.update_state(state)
             elif isinstance(port, I2CDisplayPort):
-                pass
-            elif port.prefix:
+                continue
+            elif hasattr(port, 'prefix'):
+                if not port.prefix:
+                    continue
                 name_sensor = port.prefix.split('_')[1].lower()
                 if isinstance(port, (I2CSensorHTUxxD, I2CSensorSTH31)):
                     state = await self.get_status_htu(port, name_sensor)
