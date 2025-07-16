@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from urllib.parse import quote
+import subprocess
+from urllib.parse import quote, quote_from_bytes, urlencode
 
 from propcache import cached_property
 
@@ -11,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
 from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, PORT, DISPLAY_COMMAND, \
-    TEXT, ROW, COLUMN
+    TEXT, ROW, COLUMN, SPACE
 from .core.base_ports import I2CDisplayPort
 from .core.enums import DeviceI2CMegaD
 from .core.megad import MegaD
@@ -32,9 +33,11 @@ async def async_setup_entry(
 
     for port in megad.ports:
         if isinstance(port, I2CDisplayPort):
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-display'
             if port.conf.device == DeviceI2CMegaD.LCD1602:
-                unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-display'
                 displays.append(DisplayLCD1602(coordinator, port, unique_id))
+            if port.conf.device == DeviceI2CMegaD.SSD1306:
+                displays.append(DisplaySSD1306(coordinator, port, unique_id))
 
     for display in displays:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
@@ -81,6 +84,7 @@ class MegaDDisplayEntity(CoordinatorEntity, TextEntity):
         return self._port.state
 
     def clean_line(self) -> dict:
+        """Возвращает параметры для очистки нужной строки."""
         raise NotImplementedError
 
     def write_line(self, line: str) -> list[dict]:
@@ -144,3 +148,138 @@ class DisplayLCD1602(MegaDDisplayEntity):
             )
         _LOGGER.debug(f'list_params: {list_params}')
         return list_params
+
+
+class DisplaySSD1306(MegaDDisplayEntity):
+    """Класс для многострочного дисплея."""
+
+    def clean_line(self, number_of_line: int | None = None) -> dict:
+        """Возвращает параметры для очистки нужной строки."""
+        port_id = self._port.conf.id
+        if number_of_line is None:
+            return {PORT: port_id, TEXT: (6 * SPACE)}
+        return {PORT: port_id, DISPLAY_COMMAND: 1, ROW: number_of_line}
+
+    @staticmethod
+    def extract_number_from_braces(s: str) -> dict:
+        if s.startswith('{') and '}' in s:
+            closing_brace_pos = s.find('}')
+            number_part = s[1:closing_brace_pos]
+            if number_part.isdigit():
+                return {
+                    'indent': int(number_part),
+                    'line': s[closing_brace_pos + 1:]
+                }
+        return {'indent': 0, 'line': s}
+
+    @staticmethod
+    def center_value(value: str) -> str:
+        """Центрует значение сенсора по центру экрана при большом масштабе."""
+        str_len = len(value)
+        if 's' in value or '_' in value:
+            return value
+        if 0 < str_len < 3:
+            return f'ss{value}'
+        elif 2 < str_len <= 5 and '.' in value:
+            return f's{value}'
+        elif 2 < str_len < 5:
+            return f's{value}'
+        else: return value
+
+    @staticmethod
+    def check_big_font(data: list[dict]) -> bool:
+        """Проверяет наличие большого шифра."""
+        for value in data:
+            indent = value.get('indent')
+            if indent is None:
+                return True
+        return False
+
+    def parse_line(self, line: str) -> list[dict]:
+        """Преобразует строку к нужному формату для дисплея."""
+        prepare_lines = []
+        if '/' in line:
+            lines = line.split('/')[:4]
+            for line in lines:
+                prepare_lines.append(self.extract_number_from_braces(line))
+        elif '\\' in line:
+            lines = line.split('\\')[:3]
+            for row, line in enumerate(lines):
+                if row == 1:
+                    prepare_lines.append(
+                        {'indent': None, 'line': self.center_value(line)}
+                    )
+                else:
+                    prepare_lines.append(self.extract_number_from_braces(line))
+        else:
+            prepare_lines.append({'indent': None, 'line': self.center_value(line)})
+        return prepare_lines
+
+    def write_line(self, line: str) -> list[dict]:
+        """Возвращает список параметров для запроса к контроллеру."""
+        lines = self.parse_line(line)
+        list_params = []
+        _LOGGER.debug(f'lines: {lines}')
+        if self.check_big_font(lines):
+            for row, key in enumerate(lines):
+                if key.get('indent') is None:
+                    list_params.append(
+                        {
+                            PORT: self._port.conf.id,
+                            TEXT: key.get('line'),
+                        }
+                    )
+                else:
+                    list_params.append(
+                        {
+                            PORT: self._port.conf.id,
+                            TEXT: key.get('line'),
+                            ROW: row if row == 0 else 6,
+                            COLUMN: key.get('indent'),
+                        }
+                    )
+        else:
+            for row, key in enumerate(lines):
+                list_params.append(
+                    {
+                        PORT: self._port.conf.id,
+                        TEXT: key.get('line'),
+                        ROW: row * 2,
+                        COLUMN: key.get('indent')
+                    }
+                )
+        _LOGGER.debug(f'list_params: {list_params}')
+        return list_params
+
+    async def async_set_value(self, value: str) -> None:
+        """Set the text value."""
+        _LOGGER.debug(f'Текст переданный на дисплей: {value}')
+        params_display = self.write_line(value)
+        _LOGGER.debug(f'params_display: {params_display}')
+        count_lines = len(params_display)
+        if count_lines == 1:
+            await self._megad.request_to_megad(self.clean_line())
+            await asyncio.sleep(0.2)
+        else:
+            if params_display[1].get('row') is None:
+                for i, params in enumerate(params_display):
+                    if params.get('row') is None:
+                        await self._megad.request_to_megad(self.clean_line())
+                        await asyncio.sleep(0.2)
+                    elif i == 0:
+                        await self._megad.request_to_megad(self.clean_line(0))
+                        await asyncio.sleep(0.2)
+                    elif i == count_lines - 1:
+                        await self._megad.request_to_megad(self.clean_line(6))
+                        await asyncio.sleep(0.2)
+            else:
+                for i, params in enumerate(params_display):
+                    if params.get('text') != '':
+                        await self._megad.request_to_megad(
+                            self.clean_line(i * 2)
+                        )
+                        await asyncio.sleep(0.2)
+        for params in params_display:
+            await asyncio.sleep(0.2)
+            params_str = urlencode(params, safe='%')
+            await self._megad.request_to_megad(params_str)

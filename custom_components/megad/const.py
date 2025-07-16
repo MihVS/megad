@@ -112,6 +112,7 @@ DISPLAY_COMMAND = 'disp_cmd'
 TEXT = 'text'
 ROW = 'row'
 COLUMN = 'col'
+SPACE = 's'
 
 # Значения запроса
 ON = 1

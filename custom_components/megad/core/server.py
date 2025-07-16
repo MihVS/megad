@@ -37,13 +37,14 @@ class MegadHttpView(HomeAssistantView):
         coordinator = None
         for entry_id in entry_ids:
             coordinator_temp = hass.data[DOMAIN][ENTRIES][entry_id]
-            if not hasattr(coordinator_temp, 'megad'):
-                _LOGGER.warning(f'coordinator_temp type {type(coordinator_temp)}. params: {params}')
-                _LOGGER.warning(f'ENTRIES: {hass.data[DOMAIN][ENTRIES]}')
-                _LOGGER.warning(f'entry_id: {entry_id}')
-                return None
-            if coordinator_temp.megad.domain == host:
-                coordinator = coordinator_temp
+            try:
+                if coordinator_temp.megad.domain == host:
+                    coordinator = coordinator_temp
+            except AttributeError:
+                _LOGGER.warning(
+                    f'coordinator_temp type {type(coordinator_temp)}. '
+                    f'params: {params}'
+                )
 
         if coordinator is None:
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')

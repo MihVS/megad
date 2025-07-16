@@ -111,7 +111,10 @@ class MegaD:
                             f'Идет процесс прошивки!')
             raise FirmwareUpdateInProgress
         async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
-            response = await self.session.get(url=self.url, params=params)
+            if isinstance(params, dict):
+                response = await self.session.get(url=self.url, params=params)
+            if isinstance(params, str):
+                response = await self.session.get(url=f'{self.url}?{params}')
             _LOGGER.debug(f'Отправлен запрос контроллеру '
                           f'id {self.id}: {params}')
         return response
