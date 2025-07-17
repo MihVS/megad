@@ -19,6 +19,7 @@ TIME_UPDATE = 60
 TIME_OUT_UPDATE_DATA = 5
 TIME_OUT_UPDATE_DATA_GENERAL = 30
 TIME_SLEEP_REQUEST = 0.2
+TIME_DISPLAY = 0.3
 
 COUNTER_CONNECT = 0
 
@@ -108,6 +109,11 @@ PID_I_FACTOR = 'pidif'
 PID_D_FACTOR = 'piddf'
 SET_TIME = 'stime'
 RESTART = 'restart'
+DISPLAY_COMMAND = 'disp_cmd'
+TEXT = 'text'
+ROW = 'row'
+COLUMN = 'col'
+SPACE = 's'
 
 # Значения запроса
 ON = 1
@@ -185,7 +191,8 @@ PLATFORMS = [
     'fan',
     'climate',
     'number',
-    'update'
+    'update',
+    'text'
 ]
 
 
