@@ -13,5 +13,5 @@
     "lxml",
     "aiofiles"
   ],
-  "version": "v2025.7.2-beta2"
+  "version": "v2025.7.2"
 }

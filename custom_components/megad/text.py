@@ -1,7 +1,6 @@
 import asyncio
 import logging
-import subprocess
-from urllib.parse import quote, quote_from_bytes, urlencode
+from urllib.parse import urlencode
 
 from propcache import cached_property
 
@@ -11,8 +10,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import MegaDCoordinator
-from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, PORT, DISPLAY_COMMAND, \
-    TEXT, ROW, COLUMN, SPACE
+from .const import (
+    DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, PORT, DISPLAY_COMMAND, TEXT, ROW,
+    COLUMN, SPACE, TIME_DISPLAY
+)
 from .core.base_ports import I2CDisplayPort
 from .core.enums import DeviceI2CMegaD
 from .core.megad import MegaD
@@ -90,16 +91,6 @@ class MegaDDisplayEntity(CoordinatorEntity, TextEntity):
     def write_line(self, line: str) -> list[dict]:
         raise NotImplementedError
 
-    async def async_set_value(self, value: str) -> None:
-        """Set the text value."""
-        _LOGGER.debug(f'Текст переданный на дисплей: {value}')
-        await self._megad.request_to_megad(self.clean_line())
-        await asyncio.sleep(0.2)
-        params_display = self.write_line(value)
-        for params in params_display:
-            await asyncio.sleep(0.2)
-            await self._megad.request_to_megad(params)
-
 
 class DisplayLCD1602(MegaDDisplayEntity):
     """Класс для двухстрочного дисплея."""
@@ -148,6 +139,16 @@ class DisplayLCD1602(MegaDDisplayEntity):
             )
         _LOGGER.debug(f'list_params: {list_params}')
         return list_params
+
+    async def async_set_value(self, value: str) -> None:
+        """Set the text value."""
+        _LOGGER.debug(f'Текст переданный на дисплей: {value}')
+        await self._megad.request_to_megad(self.clean_line())
+        await asyncio.sleep(TIME_DISPLAY)
+        params_display = self.write_line(value)
+        for params in params_display:
+            await asyncio.sleep(TIME_DISPLAY)
+            await self._megad.request_to_megad(params)
 
 
 class DisplaySSD1306(MegaDDisplayEntity):
@@ -259,27 +260,28 @@ class DisplaySSD1306(MegaDDisplayEntity):
         count_lines = len(params_display)
         if count_lines == 1:
             await self._megad.request_to_megad(self.clean_line())
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(TIME_DISPLAY)
         else:
             if params_display[1].get('row') is None:
                 for i, params in enumerate(params_display):
                     if params.get('row') is None:
-                        await self._megad.request_to_megad(self.clean_line())
-                        await asyncio.sleep(0.2)
+                        params_str = urlencode(self.clean_line())
+                        await self._megad.request_to_megad(params_str)
+                        await asyncio.sleep(TIME_DISPLAY)
                     elif i == 0:
                         await self._megad.request_to_megad(self.clean_line(0))
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(TIME_DISPLAY)
                     elif i == count_lines - 1:
                         await self._megad.request_to_megad(self.clean_line(6))
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(TIME_DISPLAY)
             else:
                 for i, params in enumerate(params_display):
                     if params.get('text') != '':
                         await self._megad.request_to_megad(
                             self.clean_line(i * 2)
                         )
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(TIME_DISPLAY)
         for params in params_display:
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(TIME_DISPLAY)
             params_str = urlencode(params, safe='%')
             await self._megad.request_to_megad(params_str)

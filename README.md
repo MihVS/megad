@@ -350,6 +350,44 @@ MegaD в поле "Mode" стоит значение "P&R" или значени
 * `//DOM/` -> На 3 строке выведется слово DOM и при этом значение остальных строк 
 не будет стёрто.
 
+В НА можно создать автоматизацию, которая будет выводить параметры на дисплей.
+Появляется возможность выводить показания любого сенсора из НА на дисплей.
+
+<details>
+<summary>Пример автоматизации.</summary>
+
+```yaml
+  - alias: temp_humi_disp
+    triggers:
+    - trigger: state
+      entity_id:
+        - sensor.44_port39_temp
+    actions:
+      - action: text.set_value
+        data:
+          value: '^Temp_{{ states("sensor.44_port39_temp") | round(2)}}/^Humi_{{ states("sensor.44_port39_hum") | round(0)}}'
+        target:
+          entity_id: text.44_port34_lcd1602
+
+  - alias: CO2_to_display
+    triggers:
+      - trigger: state
+        entity_id:
+          - sensor.44_port44_co2
+    actions:
+      - action: text.set_value
+        data:
+          value: '{30}Living_room\{{ states("sensor.44_port44_co2") | int}}p\{30}MegaD-2561'
+        target:
+          entity_id: text.44_port30_ssd1306
+```
+<img src="./data/img/SSD1306.png" alt="telegram" width="200" />
+<img src="./data/img/LCD1602.png" alt="telegram" width="400" />
+
+
+</details>
+
+
 
 ## Терморегуляторы.
 
