@@ -17,7 +17,7 @@ from .base_ports import (
     I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorILLUM, I2CSensorMAX44009,
     I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-    I2CDisplayPort
+    I2CDisplayPort, I2CSensorOPT3001
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -69,7 +69,7 @@ class MegaD:
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
             I2CSensorINA226, I2CSensorBH1750, I2CSensorMAX44009,
             I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-            I2CDisplayPort
+            I2CDisplayPort, I2CSensorOPT3001
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.config_ports_bus_i2c = []
@@ -239,7 +239,8 @@ class MegaD:
                 elif isinstance(port, (
                         I2CSensorBH1750,
                         I2CSensorMAX44009,
-                        I2CSensorTSL2591)):
+                        I2CSensorTSL2591,
+                        I2CSensorOPT3001)):
                     state = await self.get_status_lux(port, name_sensor)
                 elif isinstance(port, I2CSensorMBx280):
                     state = await self.get_status_bmx280(port, name_sensor)
@@ -390,6 +391,8 @@ class MegaD:
                         self.ports.append(I2CSensorMAX44009(port, self.id))
                     case DeviceI2CMegaD.TSL2591:
                         self.ports.append(I2CSensorTSL2591(port, self.id))
+                    case DeviceI2CMegaD.OPT3001:
+                        self.ports.append(I2CSensorOPT3001(port, self.id))
                     case DeviceI2CMegaD.PTsensor:
                         self.ports.append(I2CSensorPT(port, self.id))
                     case DeviceI2CMegaD.MCP230XX:
@@ -471,6 +474,10 @@ class MegaD:
                     case DeviceI2CMegaD.TSL2591.value:
                         self.ports.append(
                             I2CSensorTSL2591(port, self.id, f'_{sensor_name}_{i}')
+                        )
+                    case DeviceI2CMegaD.OPT3001.value:
+                        self.ports.append(
+                            I2CSensorOPT3001(port, self.id, f'_{sensor_name}_{i}')
                         )
                     case DeviceI2CMegaD.T67xx.value:
                         self.ports.append(

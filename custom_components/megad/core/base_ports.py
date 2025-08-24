@@ -512,7 +512,7 @@ class OneWireBusSensorPort(DigitalSensorBase):
         sensors = raw_data.split(';')
         for sensor in sensors:
             id_sensor, value = sensor.split(':')
-            states[id_sensor] = value if value != 'NA' else None
+            states[id_sensor] = value if value != NOT_AVAILABLE else None
         return states
 
 
@@ -643,6 +643,8 @@ class I2CSensorX(DigitalSensorBase):
         data: Х
         """
         try:
+            if data == NOT_AVAILABLE:
+                data = None
             self._state[key] = data
         except ValueError:
             _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
@@ -672,6 +674,11 @@ class I2CSensorMAX44009(I2CSensorILLUM):
 
 class I2CSensorTSL2591(I2CSensorILLUM):
     """Класс для сенсора TSL2591 I2C интерфейса."""
+    pass
+
+
+class I2CSensorOPT3001(I2CSensorILLUM):
+    """Класс для сенсора OPT3001 I2C интерфейса."""
     pass
 
 
