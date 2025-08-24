@@ -21,7 +21,7 @@ from .core.base_ports import (
     DigitalSensorBase, DHTSensorPort, OneWireBusSensorPort, I2CSensorSCD4x,
     I2CSensorSTH31, AnalogSensor, I2CSensorHTUxxD, I2CSensorMBx280, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorT67xx, I2CSensorBMP180,
-    I2CSensorPT
+    I2CSensorPT, I2CSensorILLUM
 )
 from .core.megad import MegaD
 
@@ -115,7 +115,7 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id_raw, RAW_VALUE, prefix)
             )
-        if isinstance(port, I2CSensorBH1750):
+        if isinstance(port, I2CSensorILLUM):
             prefix = port.prefix
             unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                          f'{LUXURY}{prefix}')
@@ -125,7 +125,7 @@ async def async_setup_entry(
         if isinstance(port, I2CSensorT67xx):
             prefix = port.prefix
             unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                         f'{LUXURY}{prefix}')
+                         f'{CO2}{prefix}')
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id, CO2, prefix)
             )
