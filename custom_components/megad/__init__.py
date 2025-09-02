@@ -246,7 +246,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
         for port in self.megad.ports:
             if port.conf.type_port == TypePortMegaD.OUT:
                 state = not port.state if port.conf.inverse else port.state
-                await self.megad.set_port(port.conf.id, int(state))
+                if state:
+                    await self.megad.set_port(port.conf.id, int(state))
             if self.megad.check_port_is_thermostat(port):
                 await self.restore_thermo(port)
         await asyncio.sleep(1)
