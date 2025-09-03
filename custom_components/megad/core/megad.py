@@ -81,6 +81,7 @@ class MegaD:
         self.software: str | None = None
         self.lt_version_sw: LatestVersionMegaD = LatestVersionMegaD()
         self.is_flashing = False
+        self.is_available = False
         self.init_ports()
         self.init_pids()
         _LOGGER.debug(f'Создан объект MegaD: {self}')
@@ -141,8 +142,8 @@ class MegaD:
             _LOGGER.debug(f'Контроллер {self.config.plc.ip_megad} в процессе '
                           f'обновления ПО. Обновление данных невозможно.')
             return
-        await self.update_current_time()
         await self.update_ports()
+        await self.update_current_time()
         await asyncio.sleep(TIME_SLEEP_REQUEST)
         page_cf0 = await async_get_page_config(
             START_CONFIG, self.url, self.session

@@ -55,6 +55,9 @@ class MegadHttpView(HomeAssistantView):
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')
             return Response(status=HTTPStatus.NOT_FOUND)
 
+        if not coordinator.megad.is_available:
+            hass.async_create_task(coordinator.async_request_refresh())
+
         if coordinator.megad.is_flashing:
             _LOGGER.debug(f'Контроллер ip={host} в процессе обновления.')
             return None
