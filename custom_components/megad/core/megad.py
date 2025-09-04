@@ -97,7 +97,11 @@ class MegaD:
     async def check_local_software(self):
         """Проверяет прошивку в локальном хранилище."""
         lt_vers_local = {'name': '0'}
-        items = await aios.listdir(FW_PATH)
+        try:
+            items = await aios.listdir(FW_PATH)
+        except FileNotFoundError:
+            _LOGGER.debug(f'Путь {FW_PATH} файла прошивки не найден.')
+            return
         for item in items:
             item_path = os.path.join(FW_PATH, item)
             if await aios.path.isdir(item_path):

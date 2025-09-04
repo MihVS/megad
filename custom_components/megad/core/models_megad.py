@@ -635,7 +635,7 @@ class DeviceMegaD(BaseModel):
 
 class LatestVersionMegaD(BaseModel):
     """Класс актуальной версии ПО контроллера."""
-    name: str | None = None
+    name: str | None = '0'
     descr: str | None = None
     short_descr: str | None = None
     link: str | None = None
