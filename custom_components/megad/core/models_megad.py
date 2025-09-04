@@ -639,3 +639,4 @@ class LatestVersionMegaD(BaseModel):
     descr: str | None = None
     short_descr: str | None = None
     link: str | None = None
+    local: bool = False

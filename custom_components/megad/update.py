@@ -28,6 +28,7 @@ from .core.exceptions import (
     CreateSocketReceiveError, CreateSocketSendError, FWUpdateError
 )
 from .core.megad import MegaD
+from .core.models_megad import LatestVersionMegaD
 from .core.utils import (
     create_receive_socket, create_send_socket, turn_on_fw_update, download_fw,
     check_bootloader_version, get_broadcast_ip, reboot_megad, write_firmware,
@@ -71,12 +72,19 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         self._megad: MegaD = coordinator.megad
         self._entry_id = entry_id
         self._lt_version_sw = self._megad.lt_version_sw
+        self._lt_version_sw_local = self._megad.lt_version_sw_local
         self._attr_unique_id = f'{self._megad.id}-megad_firmware_update'
         self._attr_name = 'Обновление прошивки контроллера'
         self._current_version = self._megad.software
-        self._latest_version = self._lt_version_sw.name
         self._attr_device_info = coordinator.devices_info()
         self.entity_id = f'update.{self._megad.id}-megad_firmware_update'
+
+    def get_lt_ver_obj(self) -> LatestVersionMegaD:
+        """Получает объект последней версии прошивки."""
+        if bool(self._lt_version_sw.name > self._lt_version_sw_local.name):
+            return self._lt_version_sw
+        else:
+            return self._lt_version_sw_local
 
     @property
     def installed_version(self) -> str | None:
@@ -86,12 +94,12 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
     @property
     def latest_version(self) -> str | None:
         """Latest version available for install."""
-        return self._latest_version
+        return self.get_lt_ver_obj().name
 
     @cached_property
     def release_summary(self) -> str | None:
         """Summary of the release notes or changelog."""
-        return self._lt_version_sw.short_descr
+        return self.get_lt_ver_obj().short_descr
 
     @cached_property
     def title(self) -> str | None:
@@ -101,12 +109,12 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
 
     def release_notes(self) -> str | None:
         """Return full release notes."""
-        return self._lt_version_sw.descr
+        return self.get_lt_ver_obj().descr
 
     def version_is_newer(
             self, latest_version: str, installed_version: str) -> bool:
         """Return True if latest_version is newer than installed_version."""
-        return bool(self._latest_version > self._current_version)
+        return bool(self.get_lt_ver_obj().name > self._current_version)
 
     @cached_property
     def release_url(self) -> str | None:
@@ -134,6 +142,8 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         await manager_config.read_config_file()
         _LOGGER.debug(f'Прочитан файл конфигурации. Всего строк: '
                       f'{len(manager_config.settings)}')
+        await asyncio.sleep(1)
+        _LOGGER.debug(f'Начало загрузки конфигурации в контроллер...')
         await manager_config.upload_config(timeout=0.2)
         _LOGGER.debug(f'Конфигурация загружена в контроллер.')
 
@@ -156,7 +166,10 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             async_get_source_ip(self.hass), self.hass.loop).result()
         _LOGGER.debug(f'Адрес хоста: {host_ip}, адрес MegaD: {megad_ip}')
         try:
-            file_path = download_fw(self._megad.lt_version_sw.link)
+            if self.get_lt_ver_obj().local:
+                file_path = self.get_lt_ver_obj().link
+            else:
+                file_path = download_fw(self._megad.lt_version_sw.link)
             check_bootloader_version(megad_ip, password)
             broadcast_ip = get_broadcast_ip(host_ip)
             broadcast_string = BROADCAST_START + CHECK_DATA
@@ -250,9 +263,6 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
             asyncio.run_coroutine_threadsafe(
                 self._write_config(), self.hass.loop
             ).result()
-            time.sleep(1)
-
-            self._current_version = self._latest_version
             time.sleep(1)
         except (CreateSocketReceiveError, CreateSocketSendError):
             _LOGGER.error(f'Ошибка обновления ПО контроллера. Не удалось '

@@ -85,6 +85,7 @@ async def async_setup_entry(
         fw_checker=hass.data[DOMAIN][FIRMWARE_CHECKER]
     )
     await megad.async_init_i2c_bus()
+    await megad.check_local_software()
 
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
