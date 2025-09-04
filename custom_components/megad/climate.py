@@ -112,7 +112,13 @@ class BaseClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def current_temperature(self):
         """Возвращает текущую температуру."""
-        return float(self._port.state[TEMPERATURE])
+        current_temperature = None
+        try:
+            current_temperature = float(self._port.state[TEMPERATURE])
+        except KeyError:
+            _LOGGER.warning(f'{self.entity_id} не инициализирован. Проверьте '
+                            f'доступность контроллера с id: {self._megad.id}')
+        return current_temperature
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Устанавливает режим HVAC."""

@@ -85,6 +85,7 @@ async def async_setup_entry(
         fw_checker=hass.data[DOMAIN][FIRMWARE_CHECKER]
     )
     await megad.async_init_i2c_bus()
+    await megad.check_local_software()
 
     coordinator = MegaDCoordinator(hass=hass, megad=megad)
     await coordinator.async_config_entry_first_refresh()
@@ -158,6 +159,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
                 raise FirmwareUpdateInProgress
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA_GENERAL):
                 await self.megad.update_data()
+                self._count_connect = 0
+                self.megad.is_available = True
                 return self.megad
         except FirmwareUpdateInProgress:
             _LOGGER.warning(f'Обновление данных недоступно, контроллер '
@@ -171,10 +174,11 @@ class MegaDCoordinator(DataUpdateCoordinator):
                     f'Неудачная попытка обновления данных контроллера '
                     f'id: {self.megad.config.plc.megad_id}. Ошибка: {err}.'
                     f'Осталось попыток: '
-                    f'{COUNTER_CONNECT - self._count_connect}'
+                    f'{COUNTER_CONNECT - self._count_connect + 1}'
                 )
                 return self.megad
             else:
+                self.megad.is_available = False
                 raise UpdateFailed(f'Ошибка соединения с контроллером id: '
                                    f'{self.megad.config.plc.megad_id}: {err}')
 
@@ -246,7 +250,8 @@ class MegaDCoordinator(DataUpdateCoordinator):
         for port in self.megad.ports:
             if port.conf.type_port == TypePortMegaD.OUT:
                 state = not port.state if port.conf.inverse else port.state
-                await self.megad.set_port(port.conf.id, int(state))
+                if state:
+                    await self.megad.set_port(port.conf.id, int(state))
             if self.megad.check_port_is_thermostat(port):
                 await self.restore_thermo(port)
         await asyncio.sleep(1)

@@ -21,7 +21,7 @@ TIME_OUT_UPDATE_DATA_GENERAL = 30
 TIME_SLEEP_REQUEST = 0.2
 TIME_DISPLAY = 0.3
 
-COUNTER_CONNECT = 0
+COUNTER_CONNECT = 4
 
 PATH_CONFIG_MEGAD = 'custom_components/config_megad/'
 RELEASE_URL = 'https://ab-log.ru/smart-house/ethernet/megad-2561-firmware'

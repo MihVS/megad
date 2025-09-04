@@ -4,6 +4,7 @@
 /.deps
 /.tts
 .HA_VERSION
+.ha_run.lock
 automations.yaml
 configuration.yaml
 home-assistant*

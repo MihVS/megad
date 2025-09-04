@@ -18,9 +18,14 @@ class MegadHttpView(HomeAssistantView):
     name = 'megad'
     requires_auth = False
 
+    @staticmethod
+    async def restore_after_reboot(coordinator):
+        """Восстановление состояния контроллера после перезагрузки"""
+        await coordinator.restore_status_ports()
+        await coordinator.megad.set_current_time()
+
     async def get(self, request: Request):
         """Обрабатываем GET-запрос."""
-
         host = request.remote
         params: dict = dict(request.query)
         _LOGGER.debug(f'MegaD request: {params}')
@@ -50,16 +55,19 @@ class MegadHttpView(HomeAssistantView):
             _LOGGER.debug(f'Контроллер ip={host} не добавлен в НА')
             return Response(status=HTTPStatus.NOT_FOUND)
 
+        if not coordinator.megad.is_available:
+            hass.async_create_task(coordinator.async_request_refresh())
+
         if coordinator.megad.is_flashing:
             _LOGGER.debug(f'Контроллер ip={host} в процессе обновления.')
             return None
 
         if state_megad == '1':
             _LOGGER.info(f'megad-{id_megad} был перезагружен')
-            await coordinator.restore_status_ports()
-            await coordinator.megad.set_current_time()
+            hass.async_create_task(self.restore_after_reboot(coordinator))
 
         if port_id is not None:
             await coordinator.update_port_state(
                 port_id=port_id, data=params, ext=ext
             )
+        return Response(status=HTTPStatus.OK)

@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import os
 from datetime import datetime
 from http import HTTPStatus
 from typing import Union
 
+import aiofiles.os as aios
 import async_timeout
 from aiohttp import ClientResponse
 
@@ -25,6 +27,7 @@ from .config_parser import (
     get_status_thermostat, async_get_page, get_params_pid, get_latest_version,
     get_names_i2c
 )
+from .const_fw import FW_PATH
 from .enums import (
     TypePortMegaD, ModeInMegaD, ModeOutMegaD, TypeDSensorMegaD, DeviceI2CMegaD,
     ModeI2CMegaD, ModeSensorMegaD, ModeWiegandMegaD
@@ -80,7 +83,9 @@ class MegaD:
         self.temperature: float = 0
         self.software: str | None = None
         self.lt_version_sw: LatestVersionMegaD = LatestVersionMegaD()
+        self.lt_version_sw_local: LatestVersionMegaD = LatestVersionMegaD()
         self.is_flashing = False
+        self.is_available = False
         self.init_ports()
         self.init_pids()
         _LOGGER.debug(f'Создан объект MegaD: {self}')
@@ -89,8 +94,36 @@ class MegaD:
         return (f"<MegaD(id={self.config.plc.megad_id}, "
                 f"ip={self.config.plc.ip_megad}, ports={self.ports})>")
 
+    async def check_local_software(self):
+        """Проверяет прошивку в локальном хранилище."""
+        lt_vers_local = {'name': '0'}
+        try:
+            items = await aios.listdir(FW_PATH)
+        except FileNotFoundError:
+            _LOGGER.debug(f'Путь {FW_PATH} файла прошивки не найден.')
+            return
+        for item in items:
+            item_path = os.path.join(FW_PATH, item)
+            if await aios.path.isdir(item_path):
+                files = await aios.listdir(item_path)
+                if files:
+                    file_path = os.path.join(item_path, files[0])
+                else:
+                    file_path = ''
+                    item = '0'
+                lt_vers_local['name'] = '.'.join(item.split('_'))
+                lt_vers_local['descr'] = (f'Обновление из локального файла: '
+                                          f'{file_path}')
+                lt_vers_local['short_descr'] = (f'Обновление из локального '
+                                                f'файла: {file_path}')
+                lt_vers_local['link'] = file_path
+                lt_vers_local['local'] = True
+                break
+        self.lt_version_sw_local = LatestVersionMegaD(**lt_vers_local)
+        _LOGGER.info(f'Info local update: {self.lt_version_sw_local}')
+
     async def update_latest_software(self):
-        """Обновляет последнею доступную версию ПО контроллера"""
+        """Обновляет последнею доступную версию ПО контроллера."""
         page = self.fw_checker.page_firmware
         if page:
             lt_vers = get_latest_version(page, self.software)
@@ -141,8 +174,8 @@ class MegaD:
             _LOGGER.debug(f'Контроллер {self.config.plc.ip_megad} в процессе '
                           f'обновления ПО. Обновление данных невозможно.')
             return
-        await self.update_current_time()
         await self.update_ports()
+        await self.update_current_time()
         await asyncio.sleep(TIME_SLEEP_REQUEST)
         page_cf0 = await async_get_page_config(
             START_CONFIG, self.url, self.session

@@ -101,7 +101,7 @@ class MegaDConfigManager:
                     name = inp.get('name')
                     value = inp.get('value', '')
                     if inp.get('type') == "checkbox":
-                        value = 'on' if inp.has_attr('checked') else ''
+                        value = '1' if inp.has_attr('checked') else ''
                     params += f"{name}={value}&"
 
         for select in soup.find_all('select'):
