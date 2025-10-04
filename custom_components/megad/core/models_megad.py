@@ -250,7 +250,7 @@ class PortInConfig(InverseValueMixin, ActionPortMixin, BinaryDeviceClassMixin):
     @field_validator('always_send_to_server', mode='before')
     def convert_always_send_to_server(cls, value):
         match value:
-            case 'on':
+            case 'on' | '1':
                 return True
             case _:
                 return False
