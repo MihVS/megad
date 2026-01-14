@@ -21,7 +21,7 @@ class SystemConfigMegaD(BaseModel):
     password: str = Field(alias='pwd', max_length=3)
     gateway: IPv4Address = Field(alias='gw')
     ip_server: str = Field(alias='sip')
-    server_type: ServerTypeMegaD = Field(alias='srvt')
+    server_type: ServerTypeMegaD = Field(alias='srvt', default=0)
     slug: str = Field(alias='sct')
     uart: ConfigUARTMegaD = Field(alias='gsm')
 
@@ -448,6 +448,7 @@ class I2CConfig(ClimateDeviceClassMixin, PortConfig, FilterSensorMixin):
     """Конфигурация порта для устройств I2C"""
 
     mode: ModeI2CMegaD = Field(alias='m')
+    frequency: int | None = Field(alias='hst', default=None)
 
     @field_validator('mode', mode='before')
     def convert_mode(cls, value):

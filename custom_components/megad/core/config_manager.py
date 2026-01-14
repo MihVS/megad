@@ -350,11 +350,14 @@ class MegaDConfigManager:
                 else:
                     if EXTRA_ACTION in params:
                         extra_ports.append(MCP230PortInConfig(**params))
-                    else:
+                    elif EXTRA_TYPE in params:
                         if params[EXTRA_TYPE].strip('\n') == '0':
                             extra_ports.append(MCP230PortInConfig(**params))
                         if params[EXTRA_TYPE].strip('\n') == '1':
                             extra_ports.append(MCP230RelayConfig(**params))
+                    elif (extra_types.get(params.get(PORT)) ==
+                                DeviceI2CMegaD.PCA9685.value_plc):
+                            extra_ports.append(PCA9685PWMConfig(**params))
         return DeviceMegaD(
             plc=SystemConfigMegaD(**configs),
             pids=pids,
