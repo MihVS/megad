@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
@@ -89,7 +90,7 @@ class LightRelayMegaD(PortOutEntity, LightEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, unique_id)
-        self.entity_id = f'light.{self._megad.id}_port{port.conf.id}'
+        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}')
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -205,7 +206,7 @@ class LightExtraMegaD(PortOutExtraEntity, LightEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, config_extra_port, unique_id)
-        self.entity_id = (f'light.{self._megad.id}_port{port.conf.id}_'
+        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}_'
                           f'ext{config_extra_port.id}')
 
     def __repr__(self) -> str:
@@ -234,7 +235,7 @@ class LightExtraPWMMegaD(LightPWMBaseMegaD):
         self.ext_id = f'{port.conf.id}e{config_extra_port.id}'
         self._name: str = config_extra_port.name
         self._unique_id: str = unique_id
-        self.entity_id = (f'light.{self._megad.id}_port{port.conf.id}_'
+        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}_'
                           f'ext{config_extra_port.id}')
 
     async def set_value_port(self, value):

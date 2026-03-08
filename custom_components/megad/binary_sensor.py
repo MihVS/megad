@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import BinaryPortIn, I2CExtraMCP230xx
@@ -63,7 +64,9 @@ class BinarySensorMegaD(CoordinatorEntity, BinarySensorEntity):
         self._binary_sensor_name: str = port.conf.name
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = f'binary_sensor.{self._megad.id}_port{port.conf.id}'
+        self.entity_id = slugify(
+            f'binary_sensor.{self._megad.id}_port{port.conf.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -119,8 +122,9 @@ class BinarySensorExtraMegaD(CoordinatorEntity, BinarySensorEntity):
         self._binary_sensor_name: str = config_extra_port.name
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = (f'binary_sensor.{self._megad.id}_'
-                          f'port{port.conf.id}_ext{config_extra_port.id}')
+        self.entity_id = slugify(f'binary_sensor.{self._megad.id}_'
+                                 f'port{port.conf.id}_'
+                                 f'ext{config_extra_port.id}')
 
     def __repr__(self) -> str:
         if not self.hass:
