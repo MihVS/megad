@@ -17,6 +17,7 @@
 #### Поддержать разработку
 
 [![Donate](https://img.shields.io/badge/donate-Tinkoff-FFDD2D.svg)](https://www.tinkoff.ru/rm/shutov.mikhail19/wUyu873109)
+[![Donate](https://img.shields.io/badge/Donate-Sber-green?logo=tinymce&logoColor=white)](https://www.sberbank.com/sms/pbpn?requisiteNumber=79123723304)
 
 ## Содержание.
 * [**_Описание._**](#описание)
