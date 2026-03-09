@@ -184,7 +184,9 @@ class StringSensorMegaD(CoordinatorEntity, SensorEntity):
         self._sensor_name: str = port.conf.name
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(f'sensor.{self._megad.id}_port{port.conf.id}')
+        self.entity_id = 'sensor.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -273,8 +275,9 @@ class SensorMegaD(CoordinatorEntity, SensorEntity):
                                   f'{TYPE_SENSOR_RUS[type_sensor]}{prefix}')
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(f'sensor.{self._megad.id}_port{port.conf.id}_'
-                          f'{self.type_sensor.lower()}{prefix}')
+        self.entity_id = 'sensor.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{self.type_sensor}{prefix}'
+        )
         self.last_value: None | int | float = None
         self.info_filter()
 
@@ -379,8 +382,9 @@ class SensorBusMegaD(SensorMegaD):
         self.id_one_wire = id_one_wire
         self._sensor_name: str = f'{port.conf.name}_{id_one_wire}'
         self._unique_id: str = unique_id
-        self.entity_id = slugify(f'sensor.{self._megad.id}_port{port.conf.id}_'
-                          f'{id_one_wire}')
+        self.entity_id = 'sensor.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{id_one_wire}'
+        )
 
     @property
     def native_value(self) -> float | str:
@@ -401,7 +405,7 @@ class SensorDeviceMegaD(CoordinatorEntity, SensorEntity):
         self._sensor_name: str = f'megad_{self._megad.id}_{type_sensor}'
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(f'sensor.megad_{self._sensor_name}')
+        self.entity_id = 'sensor.' + slugify(f'megad_{self._sensor_name}')
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -454,8 +458,8 @@ class AnalogSensorMegaD(CoordinatorEntity, SensorEntity):
         self._sensor_name: str = port.conf.name
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(
-            f'sensor.{self._megad.id}_port{port.conf.id}_analog'
+        self.entity_id = 'sensor.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_analog'
         )
 
     def __repr__(self) -> str:

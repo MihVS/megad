@@ -63,8 +63,9 @@ class MegaDDisplayEntity(CoordinatorEntity, TextEntity):
         self._port: I2CDisplayPort = port
         self._name: str = port.conf.name
         self._unique_id = unique_id
-        self.entity_id = slugify(f'text.{self._megad.id}_port{port.conf.id}_'
-                                 f'{port.conf.device.value}')
+        self.entity_id = 'text.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{port.conf.device.value}'
+        )
         self._attr_device_info = coordinator.devices_info()
 
     def __repr__(self) -> str:

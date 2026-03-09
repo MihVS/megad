@@ -90,7 +90,9 @@ class LightRelayMegaD(PortOutEntity, LightEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, unique_id)
-        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}')
+        self.entity_id = 'light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -153,7 +155,9 @@ class LightPWMMegaD(LightPWMBaseMegaD):
         self._port: PWMPortOut = port
         self._name: str = port.conf.name
         self._unique_id: str = unique_id
-        self.entity_id = f'light.{self._megad.id}_port{port.conf.id}'
+        self.entity_id = 'light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
 
     async def set_value_port(self, value):
         """Установка значения порта"""
@@ -206,8 +210,9 @@ class LightExtraMegaD(PortOutExtraEntity, LightEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, config_extra_port, unique_id)
-        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}_'
-                          f'ext{config_extra_port.id}')
+        self.entity_id ='light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_ext{config_extra_port.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -235,8 +240,9 @@ class LightExtraPWMMegaD(LightPWMBaseMegaD):
         self.ext_id = f'{port.conf.id}e{config_extra_port.id}'
         self._name: str = config_extra_port.name
         self._unique_id: str = unique_id
-        self.entity_id = slugify(f'light.{self._megad.id}_port{port.conf.id}_'
-                          f'ext{config_extra_port.id}')
+        self.entity_id = 'light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_ext{config_extra_port.id}'
+        )
 
     async def set_value_port(self, value):
         """Установка значения порта"""

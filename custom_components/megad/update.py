@@ -78,8 +78,8 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         self._attr_name = 'Обновление прошивки контроллера'
         self._current_version = self._megad.software
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(
-            f'update.{self._megad.id}_megad_firmware_update'
+        self.entity_id = 'update.' + slugify(
+            f'{self._megad.id}_megad_firmware_update'
         )
 
 

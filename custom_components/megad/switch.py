@@ -88,7 +88,9 @@ class SwitchMegaD(PortOutEntity, SwitchEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, unique_id)
-        self.entity_id = slugify(f'switch.{self._megad.id}_port{port.conf.id}')
+        self.entity_id = 'switch.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -224,8 +226,9 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, config_extra_port, unique_id)
-        self.entity_id = slugify(f'switch.{self._megad.id}_port{port.conf.id}_'
-                                 f'ext{config_extra_port.id}')
+        self.entity_id = 'switch.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_ext{config_extra_port.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:

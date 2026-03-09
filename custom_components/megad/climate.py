@@ -81,8 +81,8 @@ class BaseClimateEntity(CoordinatorEntity, ClimateEntity):
         self._name: str = port.conf.name
         self._unique_id: str = unique_id
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = slugify(
-            f'climate.{self._megad.id}_port{port.conf.id}'
+        self.entity_id = 'climate.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
         )
         self._attr_min_temp, self._attr_max_temp = (
             TEMPERATURE_CONDITION[port.conf.device_class]
@@ -229,7 +229,9 @@ class PIDClimateEntity(BaseClimateEntity):
         super().__init__(coordinator, port, unique_id)
         self._pid: PIDControl = pid
         self._name: str = pid.conf.name
-        self.entity_id = slugify(f'climate.{self._megad.id}_pid{pid.conf.id}')
+        self.entity_id = 'climate.' + slugify(
+            f'{self._megad.id}_pid{pid.conf.id}'
+        )
         self._attr_min_temp, self._attr_max_temp = (
             TEMPERATURE_CONDITION[pid.conf.device_class]
         )
