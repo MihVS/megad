@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
@@ -87,7 +88,9 @@ class SwitchMegaD(PortOutEntity, SwitchEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, unique_id)
-        self.entity_id = f'switch.{self._megad.id}_port{port.conf.id}'
+        self.entity_id = 'switch.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:
@@ -223,8 +226,9 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
             unique_id: str
     ) -> None:
         super().__init__(coordinator, port, config_extra_port, unique_id)
-        self.entity_id = (f'switch.{self._megad.id}_port{port.conf.id}_'
-                          f'ext{config_extra_port.id}')
+        self.entity_id = 'switch.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_ext{config_extra_port.id}'
+        )
 
     def __repr__(self) -> str:
         if not self.hass:

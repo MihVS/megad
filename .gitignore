@@ -1,6 +1,7 @@
 /.cloud
 /.storage
 /blueprints
+/.cache
 /.deps
 /.tts
 .HA_VERSION

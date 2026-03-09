@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import (
     RELEASE_URL, DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, DEFAULT_IP,
@@ -77,7 +78,11 @@ class MegaDFirmwareUpdate(CoordinatorEntity, UpdateEntity):
         self._attr_name = 'Обновление прошивки контроллера'
         self._current_version = self._megad.software
         self._attr_device_info = coordinator.devices_info()
-        self.entity_id = f'update.{self._megad.id}-megad_firmware_update'
+        self.entity_id = 'update.' + slugify(
+            f'{self._megad.id}_megad_firmware_update'
+        )
+
+
 
     def get_lt_ver_obj(self) -> LatestVersionMegaD:
         """Получает объект последней версии прошивки."""

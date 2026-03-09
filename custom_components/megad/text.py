@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, PORT, DISPLAY_COMMAND, TEXT, ROW,
@@ -62,8 +63,9 @@ class MegaDDisplayEntity(CoordinatorEntity, TextEntity):
         self._port: I2CDisplayPort = port
         self._name: str = port.conf.name
         self._unique_id = unique_id
-        self.entity_id = (f'text.{self._megad.id}_port{port.conf.id}_'
-                          f'{port.conf.device.value}')
+        self.entity_id = 'text.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{port.conf.device.value}'
+        )
         self._attr_device_info = coordinator.devices_info()
 
     def __repr__(self) -> str:
