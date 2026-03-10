@@ -4,6 +4,7 @@
 /.cache
 /.deps
 /.tts
+.DS_Store
 .HA_VERSION
 .ha_run.lock
 automations.yaml
