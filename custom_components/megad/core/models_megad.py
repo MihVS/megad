@@ -345,6 +345,16 @@ class PortOutRGB(PortOutConfig):
     """Выход для адресных RGB лент."""
 
     chip: int = Field(alias='chp')
+    port_out: int | None = None
+
+    @model_validator(mode='before')
+    def add_inverse(cls, data):
+        title = data.get('emt', '')
+        if title.count('/') > 1:
+            port_out = title.split('/')[2]
+            if port_out.isdigit():
+                data.update({'port_out': port_out})
+        return data
 
 
 class FilterSensorMixin:

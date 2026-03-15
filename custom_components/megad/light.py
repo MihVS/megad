@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from math import floor
 
@@ -12,7 +13,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from . import MegaDCoordinator
-from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, COLOR_OFF
+from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, \
+    COLOR_OFF, PORT_COMMAND
 from .core.base_ports import (
     ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut
 )
@@ -369,12 +371,32 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
         color_hex = self._convert_color(
             self._attr_rgb_color, self._attr_brightness
         )
+        if self._port.conf.port_out is not None:
+            port_out = self._megad.get_port(self._port.conf.port_out)
+            if not port_out.state:
+                await self._megad.set_port(port_out.conf.id, PORT_COMMAND.ON)
+                port_out.update_state(PORT_COMMAND.ON)
+                await self._coordinator.update_port_state(
+                    port_out.conf.id, PORT_COMMAND.ON
+                )
+                await asyncio.sleep(0.5)
         await self._megad.set_color_port(self._port.conf.id, color_hex)
         self._port.update_state(True)
+        await self._coordinator.update_port_state(
+            self._port.conf.id, True
+        )
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the light off."""
         await self._megad.set_color_port(self._port.conf.id, COLOR_OFF)
-        self._port.update_state(False)
-        self.async_write_ha_state()
+        await self._coordinator.update_port_state(
+            self._port.conf.id, False
+        )
+        if self._port.conf.port_out is not None:
+            port_out = self._megad.get_port(self._port.conf.port_out)
+            await self._megad.set_port(port_out.conf.id, PORT_COMMAND.OFF)
+            port_out.update_state(PORT_COMMAND.OFF)
+            await self._coordinator.update_port_state(
+                port_out.conf.id, PORT_COMMAND.OFF
+            )
