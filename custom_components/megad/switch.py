@@ -249,7 +249,7 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
 
     @property
     def device_class(self):
-        match self._port.conf.device_class:
+        match self._config_extra_port.device_class:
             case DeviceClassControl.SWITCH:
                 return SwitchDeviceClass.SWITCH
             case DeviceClassControl.OUTLET:

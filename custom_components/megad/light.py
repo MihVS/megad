@@ -13,8 +13,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from . import MegaDCoordinator
-from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, \
-    COLOR_OFF, PORT_COMMAND
+from .const import (
+    DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, COLOR_OFF, PORT_COMMAND,
+    TIME_OUT_RGB
+)
 from .core.base_ports import (
     ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut
 )
@@ -379,7 +381,7 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
                 await self._coordinator.update_port_state(
                     port_out.conf.id, PORT_COMMAND.ON
                 )
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(TIME_OUT_RGB)
         await self._megad.set_color_port(self._port.conf.id, color_hex)
         self._port.update_state(True)
         await self._coordinator.update_port_state(
