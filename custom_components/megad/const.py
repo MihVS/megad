@@ -91,6 +91,8 @@ MODE = 'm'
 CLICK = 'click'
 PORT = 'pt'
 COMMAND = 'cmd'
+WS = 'ws'
+CHIP = 'chp'
 ALL_STATES = 'all'
 SCAN = 'scan'
 LIST_STATES = 'list'
@@ -206,3 +208,15 @@ class PIDLimit:
 PID_LIMIT_P = PIDLimit(min_value=0.0, max_value=100.0)
 PID_LIMIT_I = PIDLimit(min_value=0.0, max_value=10.0)
 PID_LIMIT_D = PIDLimit(min_value=0.0, max_value=10.0)
+
+
+COLOR_ORDERS = {
+    'rgb': (0, 1, 2),
+    'grb': (1, 0, 2),
+    'brg': (2, 0, 1),
+    'rbg': (0, 2, 1),
+    'gbr': (1, 2, 0),
+    'bgr': (2, 1, 0),
+}
+
+COLOR_OFF = '000000'

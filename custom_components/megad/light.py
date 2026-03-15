@@ -3,16 +3,18 @@ from math import floor
 
 from propcache import cached_property
 
-from homeassistant.components.light import LightEntity, ColorMode
+from homeassistant.components.light import (
+    LightEntity, ColorMode, ATTR_BRIGHTNESS, ATTR_RGB_COLOR
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from . import MegaDCoordinator
-from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS
+from .const import DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, COLOR_OFF
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx
+    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut
 )
 from .core.entties import PortOutEntity, PortOutExtraEntity
 from .core.enums import DeviceClassControl
@@ -47,6 +49,9 @@ async def async_setup_entry(
                 lights.append(LightPWMMegaD(
                     coordinator, port, unique_id)
                 )
+        if isinstance(port, RGBPortOut):
+            unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-light'
+            lights.append(LightRGBMegaD(coordinator, port, unique_id))
         if isinstance(port, I2CExtraPCA9685):
             for config in port.extra_confs:
                 if (isinstance(config, PCA9685RelayConfig) and
@@ -286,3 +291,90 @@ class LightExtraPWMMegaD(LightPWMBaseMegaD):
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
         await self.set_value_port(0)
+
+
+class LightRGBMegaD(CoordinatorEntity, LightEntity):
+    """Класс для RGB адресной ленты."""
+
+    _attr_supported_color_modes = {ColorMode.RGB}
+    _attr_color_mode = ColorMode.RGB
+    _attr_brightness = 255
+    _attr_rgb_color = (255, 255, 255)
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: RGBPortOut,
+            unique_id: str
+    ) -> None:
+        super().__init__(coordinator)
+        self._coordinator: MegaDCoordinator = coordinator
+        self._megad: MegaD = coordinator.megad
+        self._port: RGBPortOut = port
+        self._name: str = port.conf.name
+        self._unique_id: str = unique_id
+        self._color_order: str = port.conf.device_class
+        self._attr_device_info = coordinator.devices_info()
+        self.entity_id = 'light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}'
+        )
+
+    @cached_property
+    def name(self) -> str:
+        return self._name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Light entity {self.entity_id}>"
+        return super().__repr__()
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        return self._port.state
+
+    def _get_color_order(self) -> tuple[int, int, int]:
+        """Get color order mapping based on configuration."""
+        if self._color_order not in COLOR_ORDERS:
+            _LOGGER.warning(
+                f'Unknown color order {self._color_order}, falling back to RGB'
+            )
+            return COLOR_ORDERS['rgb']
+        return COLOR_ORDERS[self._color_order]
+
+    def _convert_color(self,
+                       rgb: tuple[int, int, int],
+                       brightness: int) -> str:
+        """Конвертирует в формат для MegaD."""
+        factor = brightness / 255.0
+        scaled = [int(c * factor) for c in rgb]
+
+        r_idx, g_idx, b_idx = self._get_color_order()
+        true_order = (scaled[r_idx], scaled[g_idx], scaled[b_idx])
+        conver_value = (f'{true_order[0]:02x}'
+                        f'{true_order[1]:02x}'
+                        f'{true_order[2]:02x}').upper()
+        _LOGGER.debug(f'{rgb} was converted to {conver_value}')
+        return conver_value
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Turn the light on."""
+        _LOGGER.debug(f"Turn on with {kwargs}")
+        if ATTR_BRIGHTNESS in kwargs:
+            self._attr_brightness = kwargs[ATTR_BRIGHTNESS]
+        if ATTR_RGB_COLOR in kwargs:
+            self._attr_rgb_color = kwargs[ATTR_RGB_COLOR]
+        color_hex = self._convert_color(
+            self._attr_rgb_color, self._attr_brightness
+        )
+        await self._megad.set_color_port(self._port.conf.id, color_hex)
+        self._port.update_state(True)
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Turn the light off."""
+        await self._megad.set_color_port(self._port.conf.id, COLOR_OFF)
+        self._port.update_state(False)
+        self.async_write_ha_state()

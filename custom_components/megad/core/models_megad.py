@@ -341,6 +341,12 @@ class PortOutPWMConfig(DeviceClassPWMMixin, PortOutConfig):
                 return False
 
 
+class PortOutRGB(PortOutConfig):
+    """Выход для адресных RGB лент."""
+
+    chip: int = Field(alias='chp')
+
+
 class FilterSensorMixin:
     """filter"""
 

@@ -10,7 +10,7 @@ from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
     OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, WiegandConfig,
-    IButtonConfig, I2CSDAConfig
+    IButtonConfig, I2CSDAConfig, PortOutRGB
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -301,7 +301,7 @@ class ReleyPortOut(BasePort):
 
 
 class PWMPortOut(BasePort):
-    """Клас для портов с ШИМ регулированием"""
+    """Класс для портов с ШИМ регулированием"""
 
     def __init__(self, conf: PortOutPWMConfig, megad_id):
         super().__init__(conf, megad_id)
@@ -337,6 +337,20 @@ class PWMPortOut(BasePort):
             _LOGGER.error(f'Megad id={self.megad_id}. Ошибка при обработке '
                           f'данных порта №{self.conf.id}. data = {data}. '
                           f'Исключение: {e}')
+
+
+class RGBPortOut(BasePort):
+    """Класс для портов управляющих RGB лентой."""
+
+    def __init__(self, conf, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: PortOutRGB = conf
+        self._state: bool = False
+
+    def update_state(self, data):
+        """Нет обратной связи у такого типа поротов."""
+        if isinstance(data, bool):
+            self._state = data
 
 
 class DigitalSensorBase(BasePort):

@@ -19,7 +19,7 @@ from .base_ports import (
     I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorILLUM, I2CSensorMAX44009,
     I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-    I2CDisplayPort, I2CSensorOPT3001
+    I2CDisplayPort, I2CSensorOPT3001, RGBPortOut
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -42,7 +42,7 @@ from ..const import (
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, SET_TEMPERATURE,
     STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E, PID_SET_POINT, PID_INPUT,
     PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL, GET_STATUS, SCAN,
-    I2C_PARAMETER
+    I2C_PARAMETER, WS, CHIP
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class MegaD:
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
             I2CSensorINA226, I2CSensorBH1750, I2CSensorMAX44009,
             I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-            I2CDisplayPort, I2CSensorOPT3001
+            I2CDisplayPort, I2CSensorOPT3001, RGBPortOut
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.config_ports_bus_i2c = []
@@ -382,6 +382,11 @@ class MegaD:
                     and (port.mode in (ModeOutMegaD.PWM, ))
             ):
                 self.ports.append(PWMPortOut(port, self.id))
+            elif (
+                    port.type_port == TypePortMegaD.OUT
+                    and (port.mode in (ModeOutMegaD.WS281X, ))
+            ):
+                self.ports.append(RGBPortOut(port, self.id))
             elif port.type_port == TypePortMegaD.DSEN:
                 match port.type_sensor:
                     case TypeDSensorMegaD.ONEW:
@@ -648,6 +653,20 @@ class MegaD:
                 if 'g' in str(port_id):
                     _LOGGER.debug(f'Группа портов №{port_id} изменила'
                                   f' состояние на {command}')
+
+    async def set_color_port(self, port_id, color, chip = None):
+        """Управление выходом релейным и шим."""
+        if chip is not None:
+            params = {PORT: port_id, WS: color, CHIP: chip}
+        else:
+            params = {PORT: port_id, WS: color}
+        response = await self.request_to_megad(params)
+        text = await response.text()
+        match text:
+            case 'busy':
+                _LOGGER.warning(f'Не удалось изменить состояние RGB порта '
+                                f'№{port_id}. Цвет {color}.')
+                raise MegaDBusy
 
     def _check_change_port(
             self, port: BasePort, old_state: str, new_state: str) -> bool:
