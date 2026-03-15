@@ -2,7 +2,7 @@ import logging
 
 from propcache import cached_property
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import SwitchEntity, SwitchDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -36,7 +36,8 @@ async def async_setup_entry(
     switches = []
     for port in megad.ports:
         if isinstance(port, ReleyPortOut):
-            if port.conf.device_class == DeviceClassControl.SWITCH:
+            if (port.conf.device_class == DeviceClassControl.SWITCH or
+                    port.conf.device_class == DeviceClassControl.OUTLET):
                 unique_id = f'{entry_id}-{megad.id}-{port.conf.id}-switch'
                 switches.append(SwitchMegaD(
                     coordinator, port, unique_id)
@@ -46,8 +47,9 @@ async def async_setup_entry(
                 groups.setdefault(port.conf.group, []).append(port.conf.id)
         if isinstance(port, I2CExtraPCA9685):
             for config in port.extra_confs:
-                if (isinstance(config, PCA9685RelayConfig) and
-                        config.device_class == DeviceClassControl.SWITCH):
+                if (isinstance(config, PCA9685RelayConfig) and (
+                        config.device_class == DeviceClassControl.SWITCH or
+                        config.device_class == DeviceClassControl.OUTLET)):
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                                  f'ext{config.id}-switch')
                     switches.append(SwitchExtraMegaD(
@@ -59,8 +61,9 @@ async def async_setup_entry(
                     )
         if isinstance(port, I2CExtraMCP230xx):
             for config in port.extra_confs:
-                if (isinstance(config, MCP230RelayConfig) and
-                        config.device_class == DeviceClassControl.SWITCH):
+                if (isinstance(config, MCP230RelayConfig) and (
+                        config.device_class == DeviceClassControl.SWITCH or
+                        config.device_class == DeviceClassControl.OUTLET)):
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
                                  f'ext{config.id}-switch')
                     switches.append(SwitchExtraMegaD(
@@ -96,6 +99,15 @@ class SwitchMegaD(PortOutEntity, SwitchEntity):
         if not self.hass:
             return f"<Switch entity {self.entity_id}>"
         return super().__repr__()
+
+    @property
+    def device_class(self):
+        match self._port.conf.device_class:
+            case DeviceClassControl.SWITCH:
+                return SwitchDeviceClass.SWITCH
+            case DeviceClassControl.OUTLET:
+                return SwitchDeviceClass.OUTLET
+        return SwitchDeviceClass.SWITCH
 
 
 class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
@@ -234,3 +246,12 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
         if not self.hass:
             return f"<Switch entity {self.entity_id}>"
         return super().__repr__()
+
+    @property
+    def device_class(self):
+        match self._port.conf.device_class:
+            case DeviceClassControl.SWITCH:
+                return SwitchDeviceClass.SWITCH
+            case DeviceClassControl.OUTLET:
+                return SwitchDeviceClass.OUTLET
+        return SwitchDeviceClass.SWITCH

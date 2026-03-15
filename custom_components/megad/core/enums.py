@@ -145,6 +145,7 @@ class DeviceClassControl(Enum):
     SWITCH = 's'
     LIGHT = 'l'
     FAN = 'f'
+    OUTLET = 'o'
 
 
 class DeviceClassClimate(Enum):

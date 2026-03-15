@@ -298,6 +298,8 @@ class DeviceClassRelayMixin:
                 return DeviceClassControl.LIGHT
             case DeviceClassControl.FAN.value:
                 return DeviceClassControl.FAN
+            case DeviceClassControl.OUTLET.value:
+                return DeviceClassControl.OUTLET
             case _:
                 return DeviceClassControl.SWITCH
 
@@ -346,6 +348,7 @@ class PortOutRGB(PortOutConfig):
 
     chip: int = Field(alias='chp')
     port_out: int | None = None
+    inverse: bool = False
 
     @model_validator(mode='before')
     def add_inverse(cls, data):
