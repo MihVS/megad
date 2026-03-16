@@ -11,7 +11,7 @@ from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx
+    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, OneWirePortOut
 )
 from .core.entties import PortOutEntity, PortOutExtraEntity
 from .core.enums import DeviceClassControl
@@ -69,6 +69,18 @@ async def async_setup_entry(
                     switches.append(SwitchExtraMegaD(
                         coordinator, port, config, unique_id)
                     )
+        if isinstance(port, OneWirePortOut):
+            if (port.conf.device_class == DeviceClassControl.SWITCH or
+                    port.conf.device_class == DeviceClassControl.OUTLET):
+                for id_one_wire in port.state:
+                    unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{id_one_wire}')
+                    switches.append(SwitchMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'A')
+                    )
+                    switches.append(SwitchMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'B')
+                    )
     if groups:
         for group, ports in groups.items():
             unique_id = f'{entry_id}-{megad.id}-group{group}'
@@ -103,11 +115,10 @@ class SwitchMegaD(PortOutEntity, SwitchEntity):
     @property
     def device_class(self):
         match self._port.conf.device_class:
-            case DeviceClassControl.SWITCH:
-                return SwitchDeviceClass.SWITCH
             case DeviceClassControl.OUTLET:
                 return SwitchDeviceClass.OUTLET
-        return SwitchDeviceClass.SWITCH
+            case _:
+                return SwitchDeviceClass.SWITCH
 
 
 class SwitchGroupMegaD(CoordinatorEntity, SwitchEntity):
@@ -250,8 +261,48 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
     @property
     def device_class(self):
         match self._config_extra_port.device_class:
-            case DeviceClassControl.SWITCH:
-                return SwitchDeviceClass.SWITCH
             case DeviceClassControl.OUTLET:
                 return SwitchDeviceClass.OUTLET
-        return SwitchDeviceClass.SWITCH
+            case _:
+                return SwitchDeviceClass.SWITCH
+
+
+class SwitchMegaDOneWire(PortOutEntity, SwitchEntity):
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: OneWirePortOut,
+            unique_id: str, module_id: str, line: str
+    ) -> None:
+        super().__init__(coordinator, port, unique_id)
+        self._line = line.upper()
+        self._unique_id = f'{unique_id}-{line.lower()}'
+        self._module_id = module_id
+        self.entity_id = 'switch.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{module_id}_{line}'
+        )
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Switch entity {self.entity_id}>"
+        return super().__repr__()
+
+    @property
+    def device_class(self):
+        match self._port.conf.device_class:
+            case DeviceClassControl.OUTLET:
+                return SwitchDeviceClass.OUTLET
+            case _:
+                return SwitchDeviceClass.SWITCH
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        return self._port.state[self._module_id][self._line]
+
+    async def _send_command(self, command):
+        await self._megad.set_port_one_wire(
+            self._port.conf.id,
+            self._line,
+            self._check_inverse(command),
+            self._module_id
+        )

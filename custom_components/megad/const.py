@@ -116,6 +116,7 @@ TEXT = 'text'
 ROW = 'row'
 COLUMN = 'col'
 SPACE = 's'
+ADDRESS = 'addr'
 
 # Значения запроса
 ON = 1

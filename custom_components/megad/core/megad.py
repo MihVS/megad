@@ -19,7 +19,7 @@ from .base_ports import (
     I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
     I2CSensorINA226, I2CSensorBH1750, I2CSensorILLUM, I2CSensorMAX44009,
     I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-    I2CDisplayPort, I2CSensorOPT3001, RGBPortOut
+    I2CDisplayPort, I2CSensorOPT3001, RGBPortOut, OneWirePortOut
 )
 from .config_parser import (
     get_uptime, async_get_page_config, get_temperature_megad,
@@ -42,7 +42,7 @@ from ..const import (
     LIST_STATES, SCL_PORT, I2C_DEVICE, TIME_SLEEP_REQUEST, SET_TEMPERATURE,
     STATUS_THERMO, CONFIG, PID, NOT_AVAILABLE, PID_E, PID_SET_POINT, PID_INPUT,
     PID_OFF, CRON, SET_TIME, MCP_MODUL, PCA_MODUL, GET_STATUS, SCAN,
-    I2C_PARAMETER, WS, CHIP
+    I2C_PARAMETER, WS, CHIP, ADDRESS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class MegaD:
             I2CSensorMBx280, I2CExtraMCP230xx, I2CExtraPCA9685, ReaderPort,
             I2CSensorINA226, I2CSensorBH1750, I2CSensorMAX44009,
             I2CSensorTSL2591, I2CSensorT67xx, I2CSensorBMP180, I2CSensorPT,
-            I2CDisplayPort, I2CSensorOPT3001, RGBPortOut
+            I2CDisplayPort, I2CSensorOPT3001, RGBPortOut, OneWirePortOut
         ]] = []
         self.extra_ports: list[Union[I2CExtraMCP230xx, I2CExtraPCA9685]]
         self.config_ports_bus_i2c = []
@@ -255,6 +255,10 @@ class MegaD:
                     {PORT: port.conf.id, COMMAND: GET_STATUS}
                 )
                 port.update_state(state)
+            elif isinstance(port, OneWirePortOut):
+                await asyncio.sleep(TIME_SLEEP_REQUEST)
+                state = await self.get_status_one_wire_bus(port)
+                port.update_state(state)
             elif state:
                 port.update_state(state)
             elif isinstance(port, OneWireBusSensorPort):
@@ -293,7 +297,8 @@ class MegaD:
                 )
                 port.update_state(state)
 
-    async def get_status_one_wire_bus(self, port: OneWireBusSensorPort) -> str:
+    async def get_status_one_wire_bus(self,
+            port: OneWireBusSensorPort | OneWirePortOut) -> str:
         """Обновление шины сенсоров порта 1 wire"""
         params = {PORT: port.conf.id, COMMAND: LIST_STATES}
         text = await self.get_status(params)
@@ -387,6 +392,11 @@ class MegaD:
                     and (port.mode in (ModeOutMegaD.WS281X, ))
             ):
                 self.ports.append(RGBPortOut(port, self.id))
+            elif (
+                    port.type_port == TypePortMegaD.OUT
+                    and (port.mode in (ModeOutMegaD.DS2413, ))
+            ):
+                self.ports.append(OneWirePortOut(port, self.id))
             elif port.type_port == TypePortMegaD.DSEN:
                 match port.type_sensor:
                     case TypeDSensorMegaD.ONEW:
@@ -653,6 +663,28 @@ class MegaD:
                 if 'g' in str(port_id):
                     _LOGGER.debug(f'Группа портов №{port_id} изменила'
                                   f' состояние на {command}')
+
+    async def set_port_one_wire(self, port_id, line, command, module_id=None):
+        """Управление выходом модуля 1 wire."""
+        if module_id is None:
+            params = {COMMAND: f'{port_id}{line}:{command}'}
+        else:
+            params = {
+                COMMAND: f'{port_id}{line}:{command}',
+                ADDRESS: module_id
+            }
+        response = await self.request_to_megad(params)
+        text = await response.text()
+        match text:
+            case 'busy':
+                _LOGGER.warning(f'Не удалось изменить состояние порта 1 wire '
+                                f'модуля id: {module_id}. '
+                                f'Команда: {command}')
+                raise MegaDBusy
+            case _:
+                _LOGGER.debug(f'Порта: {port_id}, модуль {module_id}, '
+                              f'линия {line} - изменила состояние на '
+                              f'{command}')
 
     async def set_color_port(self, port_id, color, chip = None):
         """Управление выходом релейным и шим."""

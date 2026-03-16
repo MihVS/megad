@@ -351,13 +351,19 @@ class PortOutRGB(PortOutConfig):
     inverse: bool = False
 
     @model_validator(mode='before')
-    def add_inverse(cls, data):
+    def add_port_out(cls, data):
         title = data.get('emt', '')
         if title.count('/') > 1:
             port_out = title.split('/')[2]
             if port_out.isdigit():
                 data.update({'port_out': port_out})
         return data
+
+
+class PortOut1W(PortOutRelayConfig):
+    """Выход для модулей 1 wire."""
+
+    pass
 
 
 class FilterSensorMixin:

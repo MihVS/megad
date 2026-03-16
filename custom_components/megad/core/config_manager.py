@@ -21,7 +21,8 @@ from .models_megad import (
     PortOutPWMConfig, OneWireSensorConfig, IButtonConfig, WiegandD0Config,
     WiegandConfig, DHTSensorConfig, PortSensorConfig, I2CSDAConfig, I2CConfig,
     AnalogPortConfig, SystemConfigMegaD, PIDConfig, PCA9685PWMConfig,
-    PCA9685RelayConfig, MCP230PortInConfig, MCP230RelayConfig, PortOutRGB
+    PCA9685RelayConfig, MCP230PortInConfig, MCP230RelayConfig, PortOutRGB,
+    PortOut1W
 )
 from ..const import MEGAD_ID, RESTART, ON
 
@@ -312,6 +313,8 @@ class MegaDConfigManager:
                     ports.append(PortOutPWMConfig(**params))
                 elif params.get(MODE) == ModeOutMegaD.WS281X.value_plc:
                     ports.append(PortOutRGB(**params))
+                elif params.get(MODE) == ModeOutMegaD.DS2413.value_plc:
+                    ports.append(PortOut1W(**params))
             elif params.get(TYPE_PORT) == TypePortMegaD.DSEN.value_plc:
                 if params.get(TYPE_DEVICE) == TypeDSensorMegaD.ONEW.value_plc:
                     ports.append(OneWireSensorConfig(**params))

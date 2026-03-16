@@ -3,19 +3,20 @@ import logging
 from propcache import cached_property
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .base_ports import ReleyPortOut
+from .base_ports import ReleyPortOut, OneWirePortOut
 from .megad import MegaD
 from .. import MegaDCoordinator
-from ..const import PORT_COMMAND
+from ..const import PORT_COMMAND, PortCommand
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class PortOutEntity(CoordinatorEntity):
 
-    def __init__(
-            self, coordinator: MegaDCoordinator, port: ReleyPortOut,
-            unique_id: str
+    def __init__(self,
+                 coordinator: MegaDCoordinator,
+                 port: ReleyPortOut | OneWirePortOut,
+                 unique_id: str
     ) -> None:
         super().__init__(coordinator)
         self._coordinator: MegaDCoordinator = coordinator
@@ -38,12 +39,15 @@ class PortOutEntity(CoordinatorEntity):
         """Return true if the binary sensor is on."""
         return self._port.state
 
+    async def _send_command(self, command):
+        await self._megad.set_port(
+            self._port.conf.id, self._check_inverse(command)
+        )
+
     async def _switch_port(self, command):
         """Переключение состояния порта"""
         try:
-            await self._megad.set_port(
-                self._port.conf.id, self._check_inverse(command)
-            )
+            await self._send_command(command)
             if command == PORT_COMMAND.TOGGLE:
                 if self._port.state:
                     await self._coordinator.update_port_state(
@@ -63,7 +67,7 @@ class PortOutEntity(CoordinatorEntity):
             _LOGGER.warning(f'Ошибка управления портом '
                             f'{self._port.conf.id}: {e}')
 
-    def _check_inverse(self, command) -> PORT_COMMAND:
+    def _check_inverse(self, command) -> PortCommand:
         """Проверяет необходимость инверсии и возвращает правильную команду"""
         if command == PORT_COMMAND.ON:
             return (
@@ -152,7 +156,7 @@ class PortOutExtraEntity(CoordinatorEntity):
             _LOGGER.warning(f'Ошибка управления портом '
                             f'{self._port.conf.id}: {e}')
 
-    def _check_inverse(self, command) -> PORT_COMMAND:
+    def _check_inverse(self, command) -> PortCommand:
         """Проверяет необходимость инверсии и возвращает правильную команду"""
         if command == PORT_COMMAND.ON:
             return (

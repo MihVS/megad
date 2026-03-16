@@ -10,7 +10,7 @@ from .models_megad import (
     PortConfig, PortInConfig, PortOutRelayConfig, PortOutPWMConfig,
     OneWireSensorConfig, PortSensorConfig, DHTSensorConfig,
     OneWireBusSensorConfig, I2CConfig, AnalogPortConfig, WiegandConfig,
-    IButtonConfig, I2CSDAConfig, PortOutRGB
+    IButtonConfig, I2CSDAConfig, PortOutRGB, PortOut1W
 )
 from ..const import (
     STATE_RELAY, VALUE, RELAY_ON, MODE, COUNT, CLICK, STATE_BUTTON,
@@ -353,6 +353,51 @@ class RGBPortOut(BasePort):
             self._state = data
 
 
+class OneWirePortOut(BasePort):
+    """Класс для выходов DS2413."""
+
+    def __init__(self, conf: PortOut1W, megad_id):
+        super().__init__(conf, megad_id)
+        self.conf: PortOut1W = conf
+        self._state: dict = {}
+
+    def _convert_state(self, value):
+        """Конвертация состояния канала в булевое значение."""
+        match value:
+            case 'on':
+                return False if self.conf.inverse else True
+            case 'off':
+                return True if self.conf.inverse else False
+            case _:
+                return False
+
+    def update_state(self, raw_data):
+        """
+        Достаёт состояние каналов А и В модулей из данных шины.
+        data:   OFF/OFF
+                6f3816000000:OFF/OFF
+                6f3816000000:ON/OFF;4a3556000000:OFF/OFF
+        """
+        states = {}
+        if not ':' in raw_data:
+            return
+        if 'window' in raw_data:
+            raise TypeSensorError
+        if raw_data.lower() == PLC_BUSY:
+            raise MegaDBusy
+        if raw_data.lower() == PORT_OFF:
+            raise PortOFFError
+        modules = raw_data.split(';')
+        for module in modules:
+            id_module, value = module.split(':')
+            if '/' in value:
+                state_a, state_b = value.lower().split('/')
+                states[id_module] = {
+                    'A': self._convert_state(state_a),
+                    'B': self._convert_state(state_b)
+                }
+        self._state = states
+
 class DigitalSensorBase(BasePort):
     """Базовый класс для цифровых сенсоров"""
 
@@ -426,7 +471,7 @@ class DigitalSensorBase(BasePort):
 
 
 class OneWireSensorPort(DigitalSensorBase):
-    """Клас для портов 1 wire сенсоров"""
+    """Класс для портов 1 wire сенсоров"""
 
     def __init__(self, conf: OneWireSensorConfig, megad_id):
         super().__init__(conf, megad_id)
@@ -504,7 +549,7 @@ class DHTSensorPort(TempHumSensor):
 
 
 class OneWireBusSensorPort(DigitalSensorBase):
-    """Клас для портов 1 wire сенсоров соединённых шиной"""
+    """Класс для портов 1 wire сенсоров соединённых шиной"""
 
     def __init__(self, conf: OneWireBusSensorConfig, megad_id):
         super().__init__(conf, megad_id)
