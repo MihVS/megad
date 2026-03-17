@@ -76,7 +76,7 @@ async def async_setup_entry(
                     port.conf.device_class == DeviceClassControl.OUTLET):
                 for id_one_wire in port.state:
                     unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
-                                 f'{id_one_wire}')
+                                 f'{id_one_wire}-switch')
                     switches.append(SwitchMegaDOneWire(
                         coordinator, port, unique_id, id_one_wire, 'A')
                     )
@@ -277,7 +277,7 @@ class SwitchMegaDOneWire(PortOutOneWireEntity, SwitchEntity):
     ) -> None:
         super().__init__(coordinator, port, unique_id, module_id, line)
         self.entity_id = 'switch.' + slugify(
-            f'{self._megad.id}_port{port.conf.id}_{module_id}_{line}'
+            f'{self._megad.id}_port{port.conf.id}_{module_id.strip("0")}_{line}'
         )
 
     def __repr__(self) -> str:

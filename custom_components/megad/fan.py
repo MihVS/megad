@@ -13,9 +13,11 @@ from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx
+    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, OneWirePortOut
 )
-from .core.entties import PortOutEntity, PortOutExtraEntity
+from .core.entties import (
+    PortOutEntity, PortOutExtraEntity, PortOutOneWireEntity
+)
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
 from .core.models_megad import (
@@ -73,6 +75,17 @@ async def async_setup_entry(
                     fans.append(FanExtraMegaD(
                         coordinator, port, config, unique_id)
                     )
+        if isinstance(port, OneWirePortOut):
+            if (port.conf.device_class == DeviceClassControl.FAN):
+                for id_one_wire in port.state:
+                    unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{id_one_wire}-fan')
+                    fans.append(FanMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'A')
+                    )
+                    fans.append(FanMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'B')
+                    )
     for fan in fans:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             fan.unique_id)
@@ -93,6 +106,50 @@ class FanMegaD(PortOutEntity, FanEntity):
         super().__init__(coordinator, port, unique_id)
         self.entity_id = 'fan.' + slugify(
             f'{self._megad.id}_port{port.conf.id}'
+        )
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Fan entity {self.entity_id}>"
+        return super().__repr__()
+
+    async def async_turn_on(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Turn the entity on."""
+        await self._switch_port(PORT_COMMAND.ON)
+
+    async def async_turn_off(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Turn the entity off."""
+        await self._switch_port(PORT_COMMAND.OFF)
+
+    async def async_toggle(
+            self, speed: Optional[str] = None,
+            percentage: Optional[int] = None,
+            preset_mode: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Toggle the entity."""
+        await self._switch_port(PORT_COMMAND.TOGGLE)
+
+
+class FanMegaDOneWire(PortOutOneWireEntity, FanEntity):
+
+    _attr_supported_features = (FanEntityFeature.TURN_ON
+                                | FanEntityFeature.TURN_OFF)
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: OneWirePortOut,
+            unique_id: str, module_id: str, line: str
+    ) -> None:
+        super().__init__(coordinator, port, unique_id, module_id, line)
+        self.entity_id = 'fan.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{module_id.strip("0")}_{line}'
         )
 
     def __repr__(self) -> str:

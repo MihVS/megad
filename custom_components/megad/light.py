@@ -18,9 +18,12 @@ from .const import (
     TIME_OUT_RGB
 )
 from .core.base_ports import (
-    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut
+    ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut,
+    OneWirePortOut
 )
-from .core.entties import PortOutEntity, PortOutExtraEntity
+from .core.entties import (
+    PortOutEntity, PortOutExtraEntity, PortOutOneWireEntity
+)
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
 from .core.models_megad import (
@@ -81,6 +84,17 @@ async def async_setup_entry(
                     lights.append(LightExtraMegaD(
                         coordinator, port, config, unique_id)
                     )
+        if isinstance(port, OneWirePortOut):
+            if (port.conf.device_class == DeviceClassControl.LIGHT):
+                for id_one_wire in port.state:
+                    unique_id = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                 f'{id_one_wire}-light')
+                    lights.append(LightRelayMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'A')
+                    )
+                    lights.append(LightRelayMegaDOneWire(
+                        coordinator, port, unique_id, id_one_wire, 'B')
+                    )
     for light in lights:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             light.unique_id)
@@ -101,6 +115,26 @@ class LightRelayMegaD(PortOutEntity, LightEntity):
         super().__init__(coordinator, port, unique_id)
         self.entity_id = 'light.' + slugify(
             f'{self._megad.id}_port{port.conf.id}'
+        )
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f'<Light entity {self.entity_id}>'
+        return super().__repr__()
+
+
+class LightRelayMegaDOneWire(PortOutOneWireEntity, LightEntity):
+
+    _attr_supported_color_modes = {ColorMode.ONOFF}
+    _attr_color_mode = ColorMode.ONOFF
+
+    def __init__(
+            self, coordinator: MegaDCoordinator, port: OneWirePortOut,
+            unique_id: str, module_id: str, line: str
+    ) -> None:
+        super().__init__(coordinator, port, unique_id, module_id, line)
+        self.entity_id = 'light.' + slugify(
+            f'{self._megad.id}_port{port.conf.id}_{module_id.strip("0")}_{line}'
         )
 
     def __repr__(self) -> str:
