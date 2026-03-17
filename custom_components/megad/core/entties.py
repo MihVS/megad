@@ -15,7 +15,7 @@ class PortOutEntity(CoordinatorEntity):
 
     def __init__(self,
                  coordinator: MegaDCoordinator,
-                 port: ReleyPortOut | OneWirePortOut,
+                 port: ReleyPortOut,
                  unique_id: str
     ) -> None:
         super().__init__(coordinator)
@@ -39,15 +39,12 @@ class PortOutEntity(CoordinatorEntity):
         """Return true if the binary sensor is on."""
         return self._port.state
 
-    async def _send_command(self, command):
-        await self._megad.set_port(
-            self._port.conf.id, self._check_inverse(command)
-        )
-
     async def _switch_port(self, command):
         """Переключение состояния порта"""
         try:
-            await self._send_command(command)
+            await self._megad.set_port(
+                self._port.conf.id, self._check_inverse(command)
+            )
             if command == PORT_COMMAND.TOGGLE:
                 if self._port.state:
                     await self._coordinator.update_port_state(
@@ -168,6 +165,116 @@ class PortOutExtraEntity(CoordinatorEntity):
             return (
                 PORT_COMMAND.ON
                 if self._config_extra_port.inverse else
+                PORT_COMMAND.OFF
+            )
+        else:
+            return command
+
+    async def async_turn_on(self, **kwargs):
+        """Turn the entity on."""
+        await self._switch_port(PORT_COMMAND.ON)
+
+    async def async_turn_off(self, **kwargs):
+        """Turn the entity off."""
+        await self._switch_port(PORT_COMMAND.OFF)
+
+    async def async_toggle(self, **kwargs):
+        """Toggle the entity."""
+        await self._switch_port(PORT_COMMAND.TOGGLE)
+
+
+class PortOutOneWireEntity(CoordinatorEntity):
+
+    def __init__(self,
+                 coordinator: MegaDCoordinator,
+                 port: OneWirePortOut,
+                 unique_id: str,
+                 module_id: str,
+                 line: str
+    ) -> None:
+        super().__init__(coordinator)
+        self._coordinator: MegaDCoordinator = coordinator
+        self._megad: MegaD = coordinator.megad
+        self._port: OneWirePortOut = port
+        self._module_id = module_id
+        self._line = line.upper()
+        self._name: str = f'{port.conf.name}-{module_id.strip("0")}-{line}'
+        self._unique_id: str = f'{unique_id}-{line}'
+        self._attr_device_info = coordinator.devices_info()
+
+    @cached_property
+    def name(self) -> str:
+        return self._name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        return self._port.state[self._module_id][self._line]
+
+    async def _switch_port(self, command):
+        """Переключение состояния порта"""
+        try:
+            await self._megad.set_port_one_wire(
+                self._port.conf.id,
+                self._line,
+                self._check_inverse(command),
+                self._module_id
+            )
+            if command == PORT_COMMAND.TOGGLE:
+                if self._port.state[self._module_id][self._line]:
+                    state = {
+                        self._module_id: {
+                            self._line: self._check_inverse(
+                                int(PORT_COMMAND.OFF)
+                            )
+                        }
+                    }
+                    await self._coordinator.update_port_state(
+                        self._port.conf.id,
+                        state
+                    )
+                else:
+                    state = {
+                        self._module_id: {
+                            self._line: self._check_inverse(
+                                int(PORT_COMMAND.ON)
+                            )
+                        }
+                    }
+                    await self._coordinator.update_port_state(
+                        self._port.conf.id,
+                        state
+                    )
+            else:
+                state = {
+                    self._module_id: {
+                        self._line: self._check_inverse(int(command))
+                    }
+                }
+                await self._coordinator.update_port_state(
+                    self._port.conf.id, state
+                )
+        except Exception as e:
+            _LOGGER.warning(f'Ошибка управления портом '
+                            f'{self._port.conf.id}-{self._module_id}-'
+                            f'{self._line}: {e}')
+
+    def _check_inverse(self, command) -> PortCommand:
+        """Проверяет необходимость инверсии и возвращает правильную команду"""
+        if command == PORT_COMMAND.ON:
+            return (
+                PORT_COMMAND.OFF
+                if self._port.conf.inverse else
+                PORT_COMMAND.ON
+            )
+        elif command == PORT_COMMAND.OFF:
+            return (
+                PORT_COMMAND.ON
+                if self._port.conf.inverse else
                 PORT_COMMAND.OFF
             )
         else:

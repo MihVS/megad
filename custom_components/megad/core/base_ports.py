@@ -365,11 +365,11 @@ class OneWirePortOut(BasePort):
         """Конвертация состояния канала в булевое значение."""
         match value:
             case 'on':
-                return False if self.conf.inverse else True
+                return 0 if self.conf.inverse else 1
             case 'off':
-                return True if self.conf.inverse else False
+                return 1 if self.conf.inverse else 0
             case _:
-                return False
+                return 0
 
     def update_state(self, raw_data):
         """
@@ -377,8 +377,13 @@ class OneWirePortOut(BasePort):
         data:   OFF/OFF
                 6f3816000000:OFF/OFF
                 6f3816000000:ON/OFF;4a3556000000:OFF/OFF
+                {'6f3816000000': {'A': 1}}
         """
         states = {}
+        if isinstance(raw_data, dict):
+            module_id =  next(iter(raw_data))
+            self._state[module_id].update(raw_data[module_id])
+            return
         if not ':' in raw_data:
             return
         if 'window' in raw_data:

@@ -13,7 +13,9 @@ from .const import DOMAIN, PORT_COMMAND, ENTRIES, CURRENT_ENTITY_IDS
 from .core.base_ports import (
     ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, OneWirePortOut
 )
-from .core.entties import PortOutEntity, PortOutExtraEntity
+from .core.entties import (
+    PortOutEntity, PortOutExtraEntity, PortOutOneWireEntity
+)
 from .core.enums import DeviceClassControl
 from .core.megad import MegaD
 from .core.models_megad import (
@@ -267,16 +269,13 @@ class SwitchExtraMegaD(PortOutExtraEntity, SwitchEntity):
                 return SwitchDeviceClass.SWITCH
 
 
-class SwitchMegaDOneWire(PortOutEntity, SwitchEntity):
+class SwitchMegaDOneWire(PortOutOneWireEntity, SwitchEntity):
 
     def __init__(
             self, coordinator: MegaDCoordinator, port: OneWirePortOut,
             unique_id: str, module_id: str, line: str
     ) -> None:
-        super().__init__(coordinator, port, unique_id)
-        self._line = line.upper()
-        self._unique_id = f'{unique_id}-{line.lower()}'
-        self._module_id = module_id
+        super().__init__(coordinator, port, unique_id, module_id, line)
         self.entity_id = 'switch.' + slugify(
             f'{self._megad.id}_port{port.conf.id}_{module_id}_{line}'
         )
@@ -293,16 +292,3 @@ class SwitchMegaDOneWire(PortOutEntity, SwitchEntity):
                 return SwitchDeviceClass.OUTLET
             case _:
                 return SwitchDeviceClass.SWITCH
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        return self._port.state[self._module_id][self._line]
-
-    async def _send_command(self, command):
-        await self._megad.set_port_one_wire(
-            self._port.conf.id,
-            self._line,
-            self._check_inverse(command),
-            self._module_id
-        )
