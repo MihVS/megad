@@ -146,6 +146,9 @@ STATE_BUTTON = StateButton(SINGLE="single", DOUBLE="double", LONG="long", OFF="o
 PortCommand = namedtuple('PortCommand', ['ON', 'OFF', 'TOGGLE'])
 PORT_COMMAND = PortCommand(ON='1', OFF='0', TOGGLE='2')
 
+EffectOfRGB = namedtuple('EffectOfRGB', ['NONE', 'ALARM', 'GARLAND'])
+EFFECT_OF_RGB = EffectOfRGB(NONE="none", ALARM="alarm", GARLAND="garland")
+
 SENSOR_UNIT = {
     TEMPERATURE: UnitOfTemperature.CELSIUS,
     HUMIDITY: PERCENTAGE,

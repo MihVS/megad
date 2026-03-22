@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import random
 from math import floor
 
 from propcache import cached_property
 
 from homeassistant.components.light import (
-    LightEntity, ColorMode, ATTR_BRIGHTNESS, ATTR_RGB_COLOR
+    LightEntity, ColorMode, ATTR_BRIGHTNESS, ATTR_RGB_COLOR, ATTR_EFFECT,
+    LightEntityFeature
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -15,7 +17,7 @@ from homeassistant.util import slugify
 from . import MegaDCoordinator
 from .const import (
     DOMAIN, ENTRIES, CURRENT_ENTITY_IDS, COLOR_ORDERS, COLOR_OFF, PORT_COMMAND,
-    TIME_OUT_RGB
+    TIME_OUT_RGB, EFFECT_OF_RGB
 )
 from .core.base_ports import (
     ReleyPortOut, PWMPortOut, I2CExtraPCA9685, I2CExtraMCP230xx, RGBPortOut,
@@ -338,6 +340,7 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
     _attr_color_mode = ColorMode.RGB
     _attr_brightness = 255
     _attr_rgb_color = (255, 255, 255)
+    _attr_supported_features = LightEntityFeature.EFFECT
 
     def __init__(
             self, coordinator: MegaDCoordinator, port: RGBPortOut,
@@ -354,6 +357,8 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
         self.entity_id = 'light.' + slugify(
             f'{self._megad.id}_port{port.conf.id}'
         )
+        self._effect = EFFECT_OF_RGB.NONE
+        self._effect_task: asyncio.Task | None = None
 
     @cached_property
     def name(self) -> str:
@@ -397,16 +402,22 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
         _LOGGER.debug(f'{rgb} was converted to {conver_value}')
         return conver_value
 
+    async def _set_color(self, rgb):
+        color_hex = self._convert_color(rgb, self._attr_brightness)
+        await self._megad.set_color_port(self._port.conf.id, color_hex)
+
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the light on."""
-        _LOGGER.debug(f"Turn on with {kwargs}")
+        _LOGGER.debug(f'Turn on with {kwargs}')
+        rgb = self._attr_rgb_color
+        if ATTR_EFFECT in kwargs:
+            self._effect = kwargs[ATTR_EFFECT]
+            await self._start_effect()
+            rgb = (255, 255, 255)
         if ATTR_BRIGHTNESS in kwargs:
             self._attr_brightness = kwargs[ATTR_BRIGHTNESS]
         if ATTR_RGB_COLOR in kwargs:
-            self._attr_rgb_color = kwargs[ATTR_RGB_COLOR]
-        color_hex = self._convert_color(
-            self._attr_rgb_color, self._attr_brightness
-        )
+            rgb = kwargs[ATTR_RGB_COLOR]
         if self._port.conf.port_out is not None:
             port_out = self._megad.get_port(self._port.conf.port_out)
             if not port_out.state:
@@ -416,7 +427,9 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
                     port_out.conf.id, PORT_COMMAND.ON
                 )
                 await asyncio.sleep(TIME_OUT_RGB)
-        await self._megad.set_color_port(self._port.conf.id, color_hex)
+        if not ATTR_EFFECT in kwargs:
+            await self._set_color(rgb)
+        self._attr_rgb_color = rgb
         self._port.update_state(True)
         await self._coordinator.update_port_state(
             self._port.conf.id, True
@@ -425,6 +438,8 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the light off."""
+        await self._stop_effect()
+        self._effect = EFFECT_OF_RGB.NONE
         await self._megad.set_color_port(self._port.conf.id, COLOR_OFF)
         await self._coordinator.update_port_state(
             self._port.conf.id, False
@@ -436,3 +451,78 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
             await self._coordinator.update_port_state(
                 port_out.conf.id, PORT_COMMAND.OFF
             )
+
+    @property
+    def effect_list(self) -> list[str]:
+        return [EFFECT_OF_RGB.NONE, EFFECT_OF_RGB.ALARM, EFFECT_OF_RGB.GARLAND]
+
+    @property
+    def effect(self) -> str | None:
+        return self._effect
+
+    async def _start_effect(self):
+        await self._stop_effect()
+
+        if self._effect == EFFECT_OF_RGB.NONE:
+            return
+
+        if self._effect == EFFECT_OF_RGB.ALARM:
+            self._effect_task = asyncio.create_task(self._effect_alarm())
+
+        elif self._effect == EFFECT_OF_RGB.GARLAND:
+            self._effect_task = asyncio.create_task(self._effect_garland())
+
+    async def _stop_effect(self):
+        if self._effect_task:
+            self._effect_task.cancel()
+            try:
+                await self._effect_task
+            except asyncio.CancelledError:
+                pass
+            self._effect_task = None
+
+    async def _effect_alarm(self):
+        try:
+            while True:
+                await self._set_color((255, 0, 0))
+                await asyncio.sleep(1.5)
+
+                await self._set_color((0, 0, 255))
+                await asyncio.sleep(1.5)
+
+        except asyncio.CancelledError:
+            pass
+
+    @staticmethod
+    def _random_bright_color():
+        return random.choice([
+            (255, 0, 0),
+            (0, 255, 0),
+            (0, 0, 255),
+            (255, 255, 0),
+            (0, 255, 255),
+            (255, 0, 255),
+            (255, 255, 255),
+        ])
+
+    def _random_strip_bright(self, chips: int) -> str:
+        result = []
+        if chips > 133:
+            chips = 133
+        for _ in range(chips):
+            r, g, b = self._random_bright_color()
+            result.append(f'{r:02X}{g:02X}{b:02X}')
+
+        return ''.join(result)
+
+    async def _effect_garland(self):
+        try:
+            count_chip = self._port.conf.chip
+
+            while True:
+                color = self._random_strip_bright(count_chip)
+                await self._megad.set_color_port(self._port.conf.id, color)
+                await asyncio.sleep(5)
+
+        except asyncio.CancelledError:
+            pass
