@@ -21,14 +21,17 @@ class FirmwareChecker:
         self.entry_id = next(iter(hass.data[DOMAIN][ENTRIES]), 'default id')
         self.page_firmware = None
         self._last_check = None
+        self._user_agent = random.choice(BROWSER_UA)
 
     def _get_headers(self) -> dict:
         """Формирует заголовки."""
-        ua = f'{random.choice(BROWSER_UA)} Build/{self.entry_id}'
         headers = {
-            "User-Agent": ua,
-            "Accept-Language": "ru-RU,ru;q=0.9",
+            "User-Agent": self._user_agent,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
         }
         return headers
 
@@ -43,6 +46,10 @@ class FirmwareChecker:
             else:
                 _LOGGER.debug('Обновлено время последней проверки прошивки.')
                 self._last_check = datetime.now()
+            async with self.session.get(
+                    url=RELEASE_URL, headers=self._get_headers()
+            ) as resp:
+                await resp.text()
             async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
                 _LOGGER.debug(f'Запрос страницы прошивки для MegaD url: '
                               f'{RELEASE_URL}')
