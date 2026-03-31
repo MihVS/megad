@@ -485,10 +485,10 @@ class LightRGBMegaD(CoordinatorEntity, LightEntity):
         try:
             while True:
                 await self._set_color((255, 0, 0))
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(1)
 
                 await self._set_color((0, 0, 255))
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(1)
 
         except asyncio.CancelledError:
             pass
