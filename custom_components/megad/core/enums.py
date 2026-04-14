@@ -313,7 +313,7 @@ class DeviceI2CMegaD(EnumMegaD):
             '42': 'sps30',
             '4': 'ssd1306',
             '80': 'lcd1602',
-            '60': 'ADS1115',
+            '60': 'ads1115',
             '61': 'ina226',
             '30': 'encoder',
             '90': 'ptsensor',
