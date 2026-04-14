@@ -42,6 +42,7 @@ class MegaDConfigManager:
         self.session = session
         self.settings = []
         self.len_main_settings = 0
+        self.password = url.split('/')[3]
 
     async def request_to_megad(self, params: dict | str) -> ClientResponse:
         """Отправка запроса к контроллеру"""
@@ -70,7 +71,9 @@ class MegaDConfigManager:
         if first_page and "IN/OUT" in first_page:
             ports = 45 if "[44," in first_page else 37
         else:
-            ports_match = re.findall(r'/sec/\?pt=(\d+)', first_page or "")
+            ports_match = re.findall(
+                rf'/{self.password}/\?pt=(\d+)', first_page or ""
+            )
             if ports_match:
                 ports = max(
                     map(int, ports_match))
