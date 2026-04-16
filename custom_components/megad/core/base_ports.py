@@ -619,15 +619,45 @@ class I2CSensorSCD4x(I2CSensorXXX):
         self.parse_data(data, [CO2, TEMPERATURE, HUMIDITY])
 
 
-class I2CSensorMBx280(I2CSensorXXX):
+class I2CSensorMBx280(DigitalSensorBase):
     """Класс для сенсора типа MBx280 I2C интерфейса."""
+
+    def __init__(self, conf: I2CConfig, megad_id, prefix=''):
+        super().__init__(conf, megad_id, prefix)
+        self.conf: I2CConfig = conf
+
+    def parse_data(self, data):
+        """
+        Общий метод обработки данных.
+        data: Х/Х/Х
+              Х/Х
+        """
+        try:
+            values = data.split('/')
+            if len(values) == 2:
+                self._state.update(dict(zip([TEMPERATURE, PRESSURE], values)))
+            elif len(values) == 3:
+                self._state.update(
+                    dict(zip([TEMPERATURE, PRESSURE, HUMIDITY], values))
+                )
+            else:
+                raise ValueError
+        except ValueError:
+            _LOGGER.warning(f'Неизвестный формат данных {self.megad_id}-'
+                            f'port{self.conf.id}{self.prefix}: {data}')
+
+    def check_type_sensor(self, data):
+        """Проверка типа сенсора по полученным данным"""
+        if data:
+            if not len(data.split('/')) in (2, 3):
+                raise TypeSensorError
 
     def short_data(self, data):
         """
         Обработка короткой записи данных сенсора
         data: 25.5/754.86/22.59
         """
-        self.parse_data(data, [TEMPERATURE, PRESSURE, HUMIDITY])
+        self.parse_data(data)
 
 
 class I2CSensorINA226(I2CSensorXXX):
