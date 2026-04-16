@@ -98,7 +98,15 @@ async def async_setup_entry(
             sensors.append(SensorMegaD(
                 coordinator, port, unique_id_press, PRESSURE, prefix)
             )
-            create_temp_hum(sensors, entry_id, coordinator, megad, port)
+            if len(port.state) == 2:
+                prefix = port.prefix
+                unique_id_temp = (f'{entry_id}-{megad.id}-{port.conf.id}-'
+                                  f'{TEMPERATURE}{prefix}')
+                sensors.append(SensorMegaD(
+                    coordinator, port, unique_id_temp, TEMPERATURE, prefix)
+                )
+            else:
+                create_temp_hum(sensors, entry_id, coordinator, megad, port)
         if isinstance(port, I2CSensorINA226):
             prefix = port.prefix
             unique_id_current = (f'{entry_id}-{megad.id}-{port.conf.id}-'

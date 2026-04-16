@@ -462,9 +462,7 @@ class DigitalSensorBase(BasePort):
                             f'Ответ = {data}')
         except TypeSensorError:
             _LOGGER.warning(f'Megad id={self.megad_id}. Проверьте настройки '
-                            f'порта (id={self.conf.id}). data = {data}. '
-                            f'Порт должен быть настроен как '
-                            f'{self.conf.type_sensor}')
+                            f'порта (id={self.conf.id}). data = {data}.')
         except UpdateStateError:
             _LOGGER.warning(f'Megad id={self.megad_id}. Получен неизвестный '
                             f'формат данных для порта sensor '
