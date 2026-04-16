@@ -101,8 +101,9 @@ def get_megad_ip(local_ip, broadcast_ip) -> list:
     finally:
         sock.close()
         recv_sock.close()
-        _LOGGER.info(f'Найденные устройства: {ip_megads}')
-        return ip_megads if ip_megads else DEFAULT_IP_LIST
+
+    _LOGGER.info(f'Найденные устройства: {ip_megads}')
+    return ip_megads if ip_megads else DEFAULT_IP_LIST
 
 
 def change_ip(old_ip, new_ip, password, broadcast_ip, host_ip):
