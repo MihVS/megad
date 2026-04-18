@@ -28,8 +28,9 @@ async def get_list_config_megad(first_file='', path='') -> list:
     list_file = [file for file in config_list if file != ".gitkeep"]
     list_file.sort()
     if first_file:
-        list_file.remove(first_file)
-        list_file.insert(0, first_file)
+        if first_file in list_file:
+            list_file.remove(first_file)
+            list_file.insert(0, first_file)
     return list_file
 
 
