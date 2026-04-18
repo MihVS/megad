@@ -17,11 +17,11 @@ class SystemConfigMegaD(BaseModel):
 
     ip_megad: IPv4Address = Field(alias='eip')
     megad_id: str = Field(alias='mdid', default='', max_length=5)
-    network_mask: IPv4Address = Field(alias='emsk', default=None)
+    network_mask: IPv4Address | None = Field(alias='emsk', default=None)
     password: str = Field(alias='pwd', max_length=3)
     gateway: IPv4Address = Field(alias='gw')
     ip_server: str = Field(alias='sip')
-    server_type: ServerTypeMegaD = Field(alias='srvt', default=0)
+    server_type: ServerTypeMegaD = Field(alias='srvt', default=ServerTypeMegaD.HTTP)
     slug: str = Field(alias='sct')
     uart: ConfigUARTMegaD = Field(alias='gsm')
 
