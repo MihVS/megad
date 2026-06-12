@@ -136,7 +136,10 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                     vol.Required(schema="password", default=self.data.get(
                         'password', DEFAULT_PASSWORD
                         )): str,
-                    vol.Optional(schema="enable_validation", default=True): bool
+                    vol.Optional(
+                        schema="enable_validation",
+                        default=self.data.get('enable_validation', True)
+                    ): bool
                 }
             )
 
@@ -203,7 +206,6 @@ class MegaDBaseFlow(config_entries.ConfigEntryBaseFlow):
                 return await self.async_step_get_config()
             try:
                 url = self.data.get('url', '')
-                print(self.data)
                 enable_validation = self.data.get('enable_validation', True)
                 session = async_get_clientsession(self.hass)
                 await validate_slug(url, session, enable_validation)
@@ -379,7 +381,7 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
             if language == 'ru':
                 value_ru = user_input.get('selection')
                 user_input.update({'selection': options_en[value_ru]})
-            _LOGGER.debug(f'step_user {user_input}')
+            _LOGGER.debug(f'step_user: {user_input}')
             try:
                 if user_input.get('selection') == 'add_device':
                     return await self.async_step_start()
@@ -477,11 +479,12 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_start(self, user_input=None):
         errors: dict[str, str] = {}
         if user_input is not None:
-            _LOGGER.debug(f'step_user: {user_input}')
+            _LOGGER.debug(f'step_start: {user_input}')
             if user_input.get('change_ip_device', False):
                 return await self.async_step_change_ip_device()
             ip = user_input['ip']
             password = user_input['password']
+            enable_validation = user_input.get('enable_validation', True)
             try:
                 base_url = await validate_url(self.hass, ip)
                 url = f'{base_url}/{user_input["password"]}/'
@@ -492,7 +495,8 @@ class MegaDConfigFlow(MegaDBaseFlow, config_entries.ConfigFlow, domain=DOMAIN):
                     self.data = {
                         'url': url,
                         'ip': user_input['ip'],
-                        'password': password
+                        'password': password,
+                        'enable_validation': enable_validation
                     }
                 return await self.async_step_get_config()
             except InvalidIpAddressExist:
@@ -535,6 +539,7 @@ class OptionsFlowHandler(MegaDBaseFlow, config_entries.OptionsFlow):
             _LOGGER.debug(f'step_init: {user_input}')
             ip = user_input['ip']
             password = user_input['password']
+            enable_validation = user_input['enable_validation']
             try:
                 base_url = await validate_url(self.hass, ip)
                 url = f'{base_url}/{user_input["password"]}/'
