@@ -3,8 +3,9 @@ from dataclasses import dataclass
 
 from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.const import (
-    UnitOfTemperature, PERCENTAGE, CONCENTRATION_PARTS_PER_MILLION, UnitOfTime,
-    UnitOfPressure, UnitOfElectricCurrent, UnitOfElectricPotential, LIGHT_LUX
+    UnitOfTemperature, PERCENTAGE, UnitOfTime, UnitOfPressure,
+    UnitOfElectricCurrent, UnitOfElectricPotential, LIGHT_LUX,
+    UnitOfRatio
 )
 from .core.enums import DeviceClassClimate
 
@@ -152,7 +153,7 @@ EFFECT_OF_RGB = EffectOfRGB(NONE="none", ALARM="alarm", GARLAND="garland")
 SENSOR_UNIT = {
     TEMPERATURE: UnitOfTemperature.CELSIUS,
     HUMIDITY: PERCENTAGE,
-    CO2: CONCENTRATION_PARTS_PER_MILLION,
+    CO2: UnitOfRatio.PARTS_PER_MILLION,
     PRESSURE: UnitOfPressure.MMHG,
     UPTIME: UnitOfTime.MINUTES,
     CURRENT: UnitOfElectricCurrent.AMPERE,
