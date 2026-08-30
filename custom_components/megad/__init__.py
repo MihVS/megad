@@ -215,7 +215,9 @@ class MegaDCoordinator(DataUpdateCoordinator):
         if port.conf.type_port in (TypePortMegaD.ADC, ):
             return
         if isinstance(port, ReaderPort) or port.conf.mode == ModeInMegaD.C:
-            await self._turn_off_state('off', 0.5, port_id, data)
+            self.hass.async_create_task(
+                self._turn_off_state('off', 0.5, port_id, data)
+            )
         else:
             self.megad.update_port(port.conf.id, data)
             self.hass.loop.call_soon(self.async_update_listeners)
