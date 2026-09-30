@@ -129,6 +129,11 @@ GET_STATUS = 'get'
 MEGAD_ID = 'mdid'
 MEGAD_STATE = 'st'
 PORT_ID = 'pt'
+SMS_PHONE = 'sms_phone'
+SMS_TEXT = 'sms_text'
+
+# События Home Assistant
+EVENT_SMS = 'megad_sms'
 
 # Максимальные допустимые скачки значений сенсоров
 ALLOWED_TEMP_JUMP = 10

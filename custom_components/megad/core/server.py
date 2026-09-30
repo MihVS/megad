@@ -6,7 +6,10 @@ from aiohttp.web_response import Response
 
 from homeassistant.components.http import HomeAssistantView
 from .const_parse import EXTRA
-from ..const import DOMAIN, ENTRIES, MEGAD_ID, MEGAD_STATE, PORT_ID
+from ..const import (
+    DOMAIN, ENTRIES, MEGAD_ID, MEGAD_STATE, PORT_ID, SMS_PHONE, SMS_TEXT,
+    EVENT_SMS
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +64,21 @@ class MegadHttpView(HomeAssistantView):
         if coordinator.megad.is_flashing:
             _LOGGER.debug(f'Контроллер ip={host} в процессе обновления.')
             return None
+
+        if SMS_TEXT in params:
+            # Входящее SMS от GSM-модуля контроллера. Запросы принимаются
+            # только от добавленных в НА контроллеров (проверка по ip выше).
+            _LOGGER.debug(f'megad-{id_megad}: получено SMS')
+            hass.bus.async_fire(
+                EVENT_SMS,
+                {
+                    MEGAD_ID: id_megad,
+                    SMS_PHONE: params.get(SMS_PHONE, ''),
+                    SMS_TEXT: params[SMS_TEXT],
+                    'host': host,
+                }
+            )
+            return Response(status=HTTPStatus.OK)
 
         if state_megad == '1':
             _LOGGER.info(f'megad-{id_megad} был перезагружен')
